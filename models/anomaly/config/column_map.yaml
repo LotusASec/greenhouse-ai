@@ -1,0 +1,11 @@
+# Anomaly model — column mapping config (TR-17)
+# Feature order matches TR-11 (FROZEN — do not reorder keys).
+# Unsupervised model — no labels section.
+
+features:
+  temperature:   "temperature"
+  humidity:      "humidity"
+  soil_moisture: "soil_moisture"
+  light:         "light"
+  ec:            "ec"
+  ph:            "ph"

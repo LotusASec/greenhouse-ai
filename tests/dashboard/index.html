@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greenhouse AI — Phase 2A/2B Dashboard</title>
+<style>
+/* ── Reset & Variables ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0c0e18;
+  --surface:  #141726;
+  --surface2: #1c1f33;
+  --border:   #252840;
+  --text:     #d8dce8;
+  --muted:    #5a607a;
+  --green:    #22c55e;
+  --red:      #ef4444;
+  --yellow:   #f59e0b;
+  --blue:     #3b82f6;
+  --cyan:     #06b6d4;
+  --purple:   #a855f7;
+  --radius:   8px;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 16px 20px 32px;
+  min-width: 900px;
+}
+
+/* ── Typography ─────────────────────────────────────────────── */
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.3px;
+}
+.page-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  margin-bottom: 18px;
+}
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* ── Card ───────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.btn:hover { background: #252840; border-color: var(--blue); }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  width: 100%;
+  justify-content: center;
+}
+.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+
+/* ── Health Grid ────────────────────────────────────────────── */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.health-item {
+  padding: 12px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  transition: border-color .3s;
+}
+.health-item.ok     { border-color: rgba(34,197,94,.4); }
+.health-item.error  { border-color: rgba(239,68,68,.4); }
+
+.dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  margin: 0 auto 7px;
+  transition: background .3s, box-shadow .3s;
+}
+.dot.ok      { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dot.error   { background: var(--red);   box-shadow: 0 0 8px var(--red);   }
+.dot.busy    { background: var(--yellow); animation: pulse .9s infinite;   }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.health-name  { font-size: 12px; font-weight: 600; color: var(--text); }
+.health-port  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.health-msg   { font-size: 10px; margin-top: 4px; height: 14px; }
+
+/* ── Preset Buttons ─────────────────────────────────────────── */
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.preset-btn {
+  padding: 8px 6px;
+  font-size: 12px;
+  text-align: center;
+  flex-direction: column;
+  gap: 2px;
+}
+.preset-emoji { font-size: 16px; display: block; line-height: 1; margin-bottom: 2px; }
+
+/* ── Sliders ────────────────────────────────────────────────── */
+.slider-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 80px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.slider-label { font-size: 11px; color: var(--muted); text-align: right; }
+.slider-val   {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--cyan);
+  text-align: left;
+  min-width: 80px;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  cursor: pointer;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--blue);
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(59,130,246,.25);
+  transition: box-shadow .15s;
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(59,130,246,.35);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Two-column layout ──────────────────────────────────────── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+/* ── Result Cards ───────────────────────────────────────────── */
+.result-card {
+  padding: 12px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.result-card:last-child { margin-bottom: 0; }
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9px;
+}
+.result-model { font-size: 12px; font-weight: 700; }
+.result-ms    { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+.kv-grid { display: grid; gap: 5px; }
+.kv-row  { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.kv-key  { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.kv-val  { font-size: 13px; font-weight: 700; font-family: var(--font-mono); text-align: right; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.badge-green  { background: rgba(34,197,94,.12);  color: var(--green);  border: 1px solid rgba(34,197,94,.3);  }
+.badge-red    { background: rgba(239,68,68,.12);  color: var(--red);    border: 1px solid rgba(239,68,68,.3);  }
+.badge-yellow { background: rgba(245,158,11,.12); color: var(--yellow); border: 1px solid rgba(245,158,11,.3); }
+.badge-blue   { background: rgba(59,130,246,.12); color: var(--blue);   border: 1px solid rgba(59,130,246,.3); }
+.badge-purple { background: rgba(168,85,247,.12); color: var(--purple); border: 1px solid rgba(168,85,247,.3); }
+
+.bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: 7px; }
+.bar-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
+
+.reco-box {
+  margin-top: 8px;
+  padding: 7px 10px;
+  background: rgba(245,158,11,.07);
+  border-left: 2px solid var(--yellow);
+  border-radius: 0 4px 4px 0;
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.err-box {
+  padding: 10px;
+  background: rgba(239,68,68,.07);
+  border: 1px solid rgba(239,68,68,.25);
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.err-hint { color: var(--muted); margin-top: 4px; font-family: inherit; }
+
+/* ── Raw JSON ───────────────────────────────────────────────── */
+details { margin-bottom: 8px; }
+details:last-child { margin-bottom: 0; }
+
+summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+  transition: color .15s;
+}
+summary::-webkit-details-marker { display: none; }
+summary:hover { color: var(--text); }
+.caret { font-size: 9px; transition: transform .2s; }
+details[open] summary { border-radius: 6px 6px 0 0; }
+details[open] .caret  { transform: rotate(90deg); }
+
+pre {
+  margin: 0;
+  padding: 12px 14px;
+  background: #080a12;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: #9ba8c5;
+  overflow-x: auto;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+/* ── Request Log ────────────────────────────────────────────── */
+.log-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th {
+  text-align: left;
+  padding: 5px 8px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(37,40,64,.5);
+  font-family: var(--font-mono);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+.s-ok  { color: var(--green); font-weight: 700; }
+.s-err { color: var(--red);   font-weight: 700; }
+
+.placeholder-cell {
+  text-align: center;
+  color: var(--muted);
+  padding: 20px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+/* ── Spinner ────────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<div class="page-title">🌿 Greenhouse AI — Phase 2A/2B Verification Dashboard</div>
+<div class="page-sub">
+  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp;
+  Payloads match MASTER_SPEC §3.2 · §3.3 · §3.4 · §3.5
+</div>
+
+<!-- ── Health Panel ───────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">Service Health</div>
+    <button class="btn" onclick="checkAllHealth()" id="refreshBtn">↻ Refresh</button>
+  </div>
+  <div class="health-grid" id="healthGrid"></div>
+</div>
+
+<!-- ── Main Grid ──────────────────────────────────────────── -->
+<div class="main-grid">
+
+  <!-- LEFT: Presets + Sliders + Run -->
+  <div>
+    <!-- Presets -->
+    <div class="card">
+      <div class="section-title">Preset Scenarios</div>
+      <div class="preset-row" id="presetRow"></div>
+    </div>
+
+    <!-- Sliders -->
+    <div class="card">
+      <div class="section-title">Sensor Values — MASTER_SPEC §3.1</div>
+      <div id="sliderContainer"></div>
+    </div>
+
+    <!-- Run -->
+    <button class="btn btn-primary" id="runBtn" onclick="runTests()">
+      ▶&nbsp; Run Tests on All 3 Services
+    </button>
+  </div>
+
+  <!-- RIGHT: Results + Raw JSON -->
+  <div>
+    <!-- Results -->
+    <div class="card">
+      <div class="section-title">Test Results</div>
+      <div id="resultsPanel">
+        <div style="text-align:center; color:var(--muted); padding:28px 0; font-size:12px">
+          Set sensor values and click <strong>Run Tests</strong>.
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw JSON -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-title" style="margin:0">Raw JSON</div>
+        <button class="btn" style="font-size:11px; padding:4px 9px"
+          onclick="toggleAllDetails()">Expand All</button>
+      </div>
+      <div id="rawPanel">
+        <div style="text-align:center; color:var(--muted); padding:16px 0; font-size:12px">
+          Request / response JSON will appear here after running tests.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Disease Section ────────────────────────────────────── -->
+<div class="card" style="margin-bottom:14px">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">🔬 Disease Detection — MASTER_SPEC §3.2</div>
+    <span style="font-size:11px; color:var(--muted)">port 8101</span>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+    <!-- Upload -->
+    <div>
+      <div class="section-title">Image Upload (JPG / PNG)</div>
+      <label style="display:block; cursor:pointer;">
+        <div id="dropZone" style="
+          border: 2px dashed var(--border);
+          border-radius: 8px;
+          padding: 28px 16px;
+          text-align: center;
+          color: var(--muted);
+          font-size: 12px;
+          transition: border-color .2s;
+          cursor: pointer;
+        " ondragover="event.preventDefault(); this.style.borderColor='var(--blue)'"
+           ondragleave="this.style.borderColor='var(--border)'"
+           ondrop="handleDrop(event)">
+          <div style="font-size:28px; margin-bottom:8px">🖼️</div>
+          <div>Drop an image here or <span style="color:var(--blue)">click to browse</span></div>
+          <div id="dropZoneFileName" style="margin-top:8px; font-family:var(--font-mono); color:var(--cyan)"></div>
+        </div>
+        <input type="file" id="diseaseFileInput" accept="image/jpeg,image/png,image/jpg"
+          style="display:none" onchange="handleFileSelect(this)">
+      </label>
+      <div id="diseasePreview" style="margin-top:12px; display:none">
+        <img id="diseaseImg" style="max-width:100%; border-radius:6px; border:1px solid var(--border)" alt="preview">
+      </div>
+      <button class="btn btn-primary" id="diseaseRunBtn" onclick="runDisease()"
+        style="margin-top:12px; width:100%; background:var(--surface2); border-color:var(--border); color:var(--text)">
+        🔬 Classify Disease
+      </button>
+    </div>
+    <!-- Results -->
+    <div>
+      <div class="section-title">Classification Result</div>
+      <div id="diseaseResult">
+        <div style="text-align:center; color:var(--muted); padding:40px 0; font-size:12px">
+          Upload an image and click Classify.
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Raw JSON -->
+  <div id="diseaseRaw" style="margin-top:12px"></div>
+</div>
+
+<!-- ── Request Log ────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">Request Log <span id="logCount" style="font-weight:400; text-transform:none; letter-spacing:0">(0)</span></div>
+    <button class="btn" style="font-size:11px; padding:4px 9px" onclick="clearLog()">Clear</button>
+  </div>
+  <div class="log-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:80px">Time</th>
+          <th style="width:120px">Service</th>
+          <th style="width:55px">Status</th>
+          <th style="width:65px">Latency</th>
+          <th>Summary</th>
+        </tr>
+      </thead>
+      <tbody id="logBody">
+        <tr><td colspan="5" class="placeholder-cell">No requests yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Script ─────────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ─── Constants ────────────────────────────────────────────────
+const SERVICES = [
+  { key: 'disease',    label: 'Disease',    port: 8101, icon: '🔬', color: '#f97316' },
+  { key: 'irrigation', label: 'Irrigation', port: 8102, icon: '💧', color: '#3b82f6' },
+  { key: 'nutrition',  label: 'Nutrition',  port: 8103, icon: '🌿', color: '#22c55e' },
+  { key: 'anomaly',    label: 'Anomaly',    port: 8104, icon: '🔍', color: '#a855f7' },
+];
+
+const SENSORS = [
+  { key: 'temperature',   label: 'Temperature',  unit: '°C',     min: 0,   max: 50,   step: 0.1,  def: 24.0, dec: 1 },
+  { key: 'humidity',      label: 'Humidity',     unit: '%',      min: 0,   max: 100,  step: 0.5,  def: 65.0, dec: 1 },
+  { key: 'soil_moisture', label: 'Soil Moist.',  unit: '%',      min: 0,   max: 100,  step: 0.5,  def: 55.0, dec: 1 },
+  { key: 'light',         label: 'Light',        unit: ' lux',   min: 0,   max: 2000, step: 5,    def: 700,  dec: 0 },
+  { key: 'ec',            label: 'EC',           unit: ' mS/cm', min: 0,   max: 5,    step: 0.01, def: 2.20, dec: 2 },
+  { key: 'ph',            label: 'pH',           unit: '',       min: 0,   max: 14,   step: 0.1,  def: 6.3,  dec: 1 },
+];
+
+const PRESETS = [
+  { label: 'Normal',  emoji: '🟢', v: { temperature:24,  humidity:65, soil_moisture:55, light:700,  ec:2.2,  ph:6.3 } },
+  { label: 'Kuru',    emoji: '🌵', v: { temperature:28,  humidity:45, soil_moisture:22, light:800,  ec:2.0,  ph:6.5 } },
+  { label: 'Mantar',  emoji: '🍄', v: { temperature:22,  humidity:88, soil_moisture:70, light:400,  ec:1.8,  ph:6.1 } },
+  { label: 'Anomali', emoji: '🚨', v: { temperature:48,  humidity:99, soil_moisture:98, light:1950, ec:4.8,  ph:1.2 } },
+];
+
+// ─── State ────────────────────────────────────────────────────
+let logEntries = [];
+let lastResponses = {};
+let lastPayload   = null;
+let allDetailsOpen = false;
+
+// ─── Build DOM on load ────────────────────────────────────────
+function init() {
+  buildHealth();
+  buildSliders();
+  buildPresets();
+  checkAllHealth();
+}
+
+// ─── Health ───────────────────────────────────────────────────
+function buildHealth() {
+  document.getElementById('healthGrid').innerHTML = SERVICES.map(s => `
+    <div class="health-item" id="hcard-${s.key}">
+      <div class="dot" id="dot-${s.key}"></div>
+      <div class="health-name">${s.icon} ${s.label}</div>
+      <div class="health-port">localhost:${s.port}</div>
+      <div class="health-msg" id="hmsg-${s.key}">—</div>
+    </div>
+  `).join('');
+}
+
+async function checkHealth(svc) {
+  setDot(svc.key, 'busy');
+  setText(`hmsg-${svc.key}`, '...');
+  const t = Date.now();
+  try {
+    const r = await fetch(`http://localhost:${svc.port}/health`,
+      { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    const ms = Date.now() - t;
+    const ok = d.status === 'ok';
+    setDot(svc.key, ok ? 'ok' : 'error');
+    setText(`hmsg-${svc.key}`, ok ? `✓ ok · ${ms}ms` : `✗ ${d.status}`);
+    document.getElementById(`hcard-${svc.key}`).className = `health-item ${ok ? 'ok' : 'error'}`;
+    pushLog(svc.label, r.status, ms, `status:${d.status}`);
+  } catch {
+    const ms = Date.now() - t;
+    setDot(svc.key, 'error');
+    setText(`hmsg-${svc.key}`, '✗ unreachable');
+    document.getElementById(`hcard-${svc.key}`).className = 'health-item error';
+    pushLog(svc.label, 0, ms, 'unreachable');
+  }
+}
+
+async function checkAllHealth() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  await Promise.allSettled(SERVICES.map(checkHealth));
+  btn.disabled = false;
+}
+
+// ─── Sliders ──────────────────────────────────────────────────
+function buildSliders() {
+  document.getElementById('sliderContainer').innerHTML = SENSORS.map(s => `
+    <div class="slider-row">
+      <div class="slider-label">${s.label}</div>
+      <input type="range"
+        id="sl-${s.key}"
+        min="${s.min}" max="${s.max}" step="${s.step}" value="${s.def}"
+        oninput="syncSlider('${s.key}')">
+      <div class="slider-val" id="sv-${s.key}">${fmtVal(s.def, s.dec, s.unit)}</div>
+    </div>
+  `).join('');
+}
+
+function syncSlider(key) {
+  const s = SENSORS.find(x => x.key === key);
+  const v = parseFloat(document.getElementById(`sl-${key}`).value);
+  document.getElementById(`sv-${key}`).textContent = fmtVal(v, s.dec, s.unit);
+}
+
+function fmtVal(v, dec, unit) {
+  return parseFloat(v).toFixed(dec) + (unit || '');
+}
+
+function getSensors() {
+  const out = {};
+  SENSORS.forEach(s => {
+    out[s.key] = parseFloat(document.getElementById(`sl-${s.key}`).value);
+  });
+  return out;
+}
+
+// ─── Presets ──────────────────────────────────────────────────
+function buildPresets() {
+  document.getElementById('presetRow').innerHTML = PRESETS.map((p, i) => `
+    <button class="btn preset-btn" onclick="applyPreset(${i})">
+      <span class="preset-emoji">${p.emoji}</span>${p.label}
+    </button>
+  `).join('');
+}
+
+function applyPreset(i) {
+  const p = PRESETS[i];
+  SENSORS.forEach(s => {
+    document.getElementById(`sl-${s.key}`).value = p.v[s.key];
+    syncSlider(s.key);
+  });
+}
+
+// ─── Run Tests ────────────────────────────────────────────────
+async function runTests() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Running…';
+
+  const sensors = getSensors();
+  const payload = {
+    node_id:   'greenhouse_01',
+    timestamp: new Date().toISOString(),
+    sensors,
+  };
+  lastPayload = payload;
+
+  document.getElementById('resultsPanel').innerHTML =
+    '<div style="text-align:center; padding:24px"><span class="spinner"></span></div>';
+  document.getElementById('rawPanel').innerHTML =
+    '<div style="text-align:center; padding:12px; color:var(--muted); font-size:12px">Fetching…</div>';
+
+  const settled = await Promise.allSettled(SERVICES.map(s => callService(s, payload)));
+
+  lastResponses = {};
+  SERVICES.forEach((s, i) => {
+    const r = settled[i];
+    lastResponses[s.key] = r.status === 'fulfilled' ? r.value : { __error: String(r.reason) };
+  });
+
+  renderResults();
+  renderRaw();
+
+  btn.disabled = false;
+  btn.innerHTML = '▶&nbsp; Run Tests on All 3 Services';
+}
+
+async function callService(svc, payload) {
+  const t = Date.now();
+  const r = await fetch(`http://localhost:${svc.port}/predict`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(10000),
+  });
+  const ms = Date.now() - t;
+  const data = await r.json();
+  data.__status = r.status;
+  data.__ms     = ms;
+  pushLog(`${svc.label} /predict`, r.status, ms, briefSummary(svc.key, data));
+  return data;
+}
+
+function briefSummary(key, d) {
+  if (key === 'irrigation') return `irrigate:${d.irrigate}  amount:${d.amount_liters}L  conf:${(d.confidence*100).toFixed(0)}%`;
+  if (key === 'nutrition')  return `class:${d.deficiency_class}  conf:${(d.confidence*100).toFixed(0)}%`;
+  if (key === 'anomaly')    return `is_anomaly:${d.is_anomaly}  score:${d.anomaly_score}`;
+  return '';
+}
+
+// ─── Render Results ───────────────────────────────────────────
+function renderResults() {
+  let html = '';
+
+  /* ── Irrigation §3.3 ── */
+  const irr = lastResponses.irrigation;
+  if (!irr || irr.__error) {
+    html += errCard('💧 Irrigation', irr?.__error || 'No response');
+  } else {
+    const badge = irr.irrigate
+      ? '<span class="badge badge-blue">💧 irrigate: TRUE</span>'
+      : '<span class="badge badge-red">⛔ irrigate: FALSE</span>';
+    const confPct = ((irr.confidence || 0) * 100).toFixed(1);
+    const barColor = irr.irrigate ? 'var(--blue)' : 'var(--green)';
+    html += `
+      <div class="result-card" style="border-color:rgba(59,130,246,.25)">
+        <div class="result-header">
+          <span class="result-model" style="color:var(--blue)">💧 Irrigation</span>
+          <span class="result-ms">${(irr.inference_time_ms||0).toFixed(1)} ms</span>
+        </div>
+        <div class="kv-grid">
+          <div class="kv-row"><span class="kv-key">irrigate</span>${badge}</div>
+          <div class="kv-row">
+            <span class="kv-key">amount_liters</span>
+            <span class="kv-val" style="color:var(--blue)">${(irr.amount_liters||0).toFixed(4)} L</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">confidence</span>
+            <span class="kv-val" style="color:var(--cyan)">${confPct}%</span>
+          </div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-fill" style="width:${confPct}%; background:${barColor}"></div>
+        </div>
+      </div>`;
+  }
+
+  /* ── Nutrition §3.4 ── */
+  const nut = lastResponses.nutrition;
+  if (!nut || nut.__error) {
+    html += errCard('🌿 Nutrition', nut?.__error || 'No response');
+  } else {
+    const cls = nut.deficiency_class || '';
+    const { badge: nutBadge, barColor: nutBar } = classStyle(cls);
+    const confPct = ((nut.confidence || 0) * 100).toFixed(1);
+    html += `
+      <div class="result-card" style="border-color:rgba(34,197,94,.2)">
+        <div class="result-header">
+          <span class="result-model" style="color:var(--green)">🌿 Nutrition</span>
+          <span class="result-ms">${(nut.inference_time_ms||0).toFixed(1)} ms</span>
+        </div>
+        <div class="kv-grid">
+          <div class="kv-row"><span class="kv-key">deficiency_class</span>${nutBadge}</div>
+          <div class="kv-row">
+            <span class="kv-key">confidence</span>
+            <span class="kv-val" style="color:var(--cyan)">${confPct}%</span>
+          </div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-fill" style="width:${confPct}%; background:${nutBar}"></div>
+        </div>
+        <div class="reco-box">${esc(nut.fertilizer_recommendation || '')}</div>
+      </div>`;
+  }
+
+  /* ── Anomaly §3.5 ── */
+  const anm = lastResponses.anomaly;
+  if (!anm || anm.__error) {
+    html += errCard('🔍 Anomaly', anm?.__error || 'No response');
+  } else {
+    const isAnm = anm.is_anomaly;
+    const badge = isAnm
+      ? '<span class="badge badge-red">🚨 ANOMALY DETECTED</span>'
+      : '<span class="badge badge-green">✅ Normal</span>';
+    const scorePct = ((anm.anomaly_score || 0) * 100).toFixed(0);
+    const scoreColor = isAnm ? 'var(--red)' : 'var(--green)';
+    html += `
+      <div class="result-card" style="border-color:rgba(168,85,247,.2)">
+        <div class="result-header">
+          <span class="result-model" style="color:var(--purple)">🔍 Anomaly</span>
+          <span class="result-ms">${(anm.inference_time_ms||0).toFixed(1)} ms</span>
+        </div>
+        <div class="kv-grid">
+          <div class="kv-row"><span class="kv-key">is_anomaly</span>${badge}</div>
+          <div class="kv-row">
+            <span class="kv-key">anomaly_score</span>
+            <span class="kv-val" style="color:${scoreColor}">${(anm.anomaly_score||0).toFixed(4)}</span>
+          </div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-fill" style="width:${scorePct}%; background:${scoreColor}"></div>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('resultsPanel').innerHTML = html;
+}
+
+function classStyle(cls) {
+  const map = {
+    normal:        { badge: '<span class="badge badge-green">✅ normal</span>',        barColor: 'var(--green)'  },
+    N_deficiency:  { badge: '<span class="badge badge-yellow">🌿 N_deficiency</span>', barColor: 'var(--yellow)' },
+    P_deficiency:  { badge: '<span class="badge badge-blue">🔵 P_deficiency</span>',  barColor: 'var(--blue)'   },
+    K_deficiency:  { badge: '<span class="badge badge-purple">🟣 K_deficiency</span>',barColor: 'var(--purple)' },
+  };
+  return map[cls] || { badge: `<span class="badge badge-yellow">${esc(cls)}</span>`, barColor: 'var(--yellow)' };
+}
+
+function errCard(title, msg) {
+  return `<div class="err-box">
+    <strong>${esc(title)}</strong>
+    <div>${esc(String(msg || 'unknown error'))}</div>
+    <div class="err-hint">Check: service running? MODEL_DIR set? model_weights/ exist?</div>
+  </div>`;
+}
+
+// ─── Render Raw JSON ──────────────────────────────────────────
+function renderRaw() {
+  if (!lastPayload) return;
+
+  const reqJson = JSON.stringify(lastPayload, null, 2);
+  let html = `
+    <details>
+      <summary><span class="caret">▶</span>&nbsp; Request Payload (sent to all 3 services)</summary>
+      <pre>${esc(reqJson)}</pre>
+    </details>`;
+
+  SERVICES.forEach(svc => {
+    const raw = lastResponses[svc.key];
+    if (!raw) return;
+    const clean = Object.fromEntries(
+      Object.entries(raw).filter(([k]) => !k.startsWith('__'))
+    );
+    const status = raw.__status ?? '—';
+    const ms     = raw.__ms     ?? '?';
+    html += `
+      <details>
+        <summary>
+          <span class="caret">▶</span>&nbsp;
+          ${svc.icon} ${svc.label} Response
+          &nbsp;·&nbsp; HTTP ${status}
+          &nbsp;·&nbsp; ${ms}ms
+        </summary>
+        <pre>${esc(JSON.stringify(clean, null, 2))}</pre>
+      </details>`;
+  });
+
+  document.getElementById('rawPanel').innerHTML = html;
+  allDetailsOpen = false;
+}
+
+function toggleAllDetails() {
+  allDetailsOpen = !allDetailsOpen;
+  document.querySelectorAll('#rawPanel details').forEach(d => {
+    d.open = allDetailsOpen;
+  });
+  document.querySelector('#rawPanel + * .btn, .card .btn')?.textContent;
+  // Find the toggle button and update label
+  const btns = document.querySelectorAll('.card .btn');
+  btns.forEach(b => {
+    if (b.textContent.trim() === 'Expand All' || b.textContent.trim() === 'Collapse All') {
+      b.textContent = allDetailsOpen ? 'Collapse All' : 'Expand All';
+    }
+  });
+}
+
+// ─── Request Log ──────────────────────────────────────────────
+function pushLog(service, status, ms, summary) {
+  const now = new Date();
+  const ts  = now.toLocaleTimeString('tr-TR', { hour12:false })
+              + '.' + String(now.getMilliseconds()).padStart(3,'0');
+  logEntries.unshift({ ts, service, status, ms, summary });
+  if (logEntries.length > 20) logEntries.length = 20;
+  renderLog();
+}
+
+function renderLog() {
+  document.getElementById('logCount').textContent = `(${logEntries.length})`;
+  if (!logEntries.length) {
+    document.getElementById('logBody').innerHTML =
+      '<tr><td colspan="5" class="placeholder-cell">No requests yet.</td></tr>';
+    return;
+  }
+  document.getElementById('logBody').innerHTML = logEntries.map(e => {
+    const sc = (e.status >= 200 && e.status < 300) ? 's-ok' : 's-err';
+    const st = e.status === 0 ? 'ERR' : e.status;
+    return `<tr>
+      <td>${esc(e.ts)}</td>
+      <td>${esc(e.service)}</td>
+      <td class="${sc}">${st}</td>
+      <td>${e.ms}ms</td>
+      <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+        ${esc(e.summary)}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function clearLog() {
+  logEntries = [];
+  renderLog();
+}
+
+// ─── Helpers ──────────────────────────────────────────────────
+function setDot(key, cls) {
+  document.getElementById(`dot-${key}`).className = `dot ${cls}`;
+}
+function setText(id, txt) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = txt;
+}
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── Disease Section ──────────────────────────────────────────
+let diseaseB64 = null;
+
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  readImageFile(file);
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  event.currentTarget.style.borderColor = 'var(--border)';
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  document.getElementById('diseaseFileInput').files = event.dataTransfer.files;
+  readImageFile(file);
+}
+
+function readImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    const b64 = dataUrl.split(',')[1];
+    diseaseB64 = b64;
+    // Show preview
+    const img = document.getElementById('diseaseImg');
+    img.src = dataUrl;
+    document.getElementById('diseasePreview').style.display = 'block';
+    document.getElementById('dropZoneFileName').textContent = file.name;
+    // Enable run button
+    const btn = document.getElementById('diseaseRunBtn');
+    btn.style.background = 'var(--orange, #f97316)';
+    btn.style.borderColor = 'var(--orange, #f97316)';
+    btn.style.color = '#fff';
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('dropZone').addEventListener('click', function() {
+  document.getElementById('diseaseFileInput').click();
+});
+
+async function runDisease() {
+  if (!diseaseB64) {
+    alert('Please select an image first.');
+    return;
+  }
+  const btn = document.getElementById('diseaseRunBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Classifying…';
+
+  const payload = {
+    node_id:   'greenhouse_01',
+    timestamp: new Date().toISOString(),
+    image_b64: diseaseB64,
+  };
+
+  const t = Date.now();
+  try {
+    const r = await fetch('http://localhost:8101/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+    const ms = Date.now() - t;
+    const data = await r.json();
+    pushLog('Disease /predict', r.status, ms, `top:${data.top_prediction} conf:${(data.top_confidence*100).toFixed(0)}%`);
+    renderDiseaseResult(data);
+    renderDiseaseRaw(payload, data, r.status, ms);
+  } catch(e) {
+    const ms = Date.now() - t;
+    pushLog('Disease /predict', 0, ms, 'error: ' + e.message);
+    document.getElementById('diseaseResult').innerHTML = `<div class="err-box">Error: ${esc(e.message)}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔬 Classify Disease';
+}
+
+const CLASS_COLORS = {
+  healthy:      { badge: 'badge-green',  bar: '#22c55e' },
+  early_blight: { badge: 'badge-yellow', bar: '#f59e0b' },
+  late_blight:  { badge: 'badge-red',    bar: '#ef4444' },
+  leaf_mold:    { badge: 'badge-purple', bar: '#a855f7' },
+  other:        { badge: 'badge-blue',   bar: '#3b82f6' },
+};
+
+function renderDiseaseResult(d) {
+  const el = document.getElementById('diseaseResult');
+  const probs = d.class_probabilities || {};
+  const top = d.top_prediction;
+  const col = CLASS_COLORS[top] || { badge: 'badge-yellow', bar: '#f59e0b' };
+
+  // Sort classes by probability desc
+  const sorted = Object.entries(probs).sort((a,b) => b[1]-a[1]);
+
+  let bars = sorted.map(([cls, prob]) => {
+    const c = CLASS_COLORS[cls] || { bar: '#5a607a' };
+    const pct = (prob * 100).toFixed(1);
+    const isBold = cls === top ? 'font-weight:700; color:var(--text)' : '';
+    return `
+      <div style="margin-bottom:7px">
+        <div style="display:flex; justify-content:space-between; margin-bottom:3px">
+          <span style="font-size:11px; ${isBold}">${esc(cls)}</span>
+          <span style="font-size:11px; font-family:var(--font-mono); ${isBold}">${pct}%</span>
+        </div>
+        <div style="height:6px; background:var(--border); border-radius:3px">
+          <div style="height:100%; width:${pct}%; background:${c.bar}; border-radius:3px; transition:width .5s"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="result-card" style="border-color:rgba(249,115,22,.25)">
+      <div class="result-header">
+        <span class="result-model" style="color:#f97316">🔬 Disease</span>
+        <span class="result-ms">${d.inference_time_ms} ms</span>
+      </div>
+      <div class="kv-row" style="margin-bottom:10px">
+        <span class="kv-key">top_prediction</span>
+        <span class="badge ${col.badge}">${esc(top)}</span>
+      </div>
+      <div class="kv-row" style="margin-bottom:12px">
+        <span class="kv-key">top_confidence</span>
+        <span class="kv-val" style="color:${col.bar}">${(d.top_confidence*100).toFixed(1)}%</span>
+      </div>
+      <div style="font-size:10px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em">
+        Class Probabilities
+      </div>
+      ${bars}
+    </div>`;
+}
+
+function renderDiseaseRaw(payload, resp, status, ms) {
+  const cleanPayload = {
+    node_id:   payload.node_id,
+    timestamp: payload.timestamp,
+    image_b64: '[base64 image — truncated for display]',
+  };
+  document.getElementById('diseaseRaw').innerHTML = `
+    <details>
+      <summary><span class="caret">▶</span>&nbsp; Request (image truncated)</summary>
+      <pre>${esc(JSON.stringify(cleanPayload, null, 2))}</pre>
+    </details>
+    <details>
+      <summary><span class="caret">▶</span>&nbsp; Disease Response · HTTP ${status} · ${ms}ms</summary>
+      <pre>${esc(JSON.stringify(resp, null, 2))}</pre>
+    </details>`;
+}
+
+// ─── Boot ─────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

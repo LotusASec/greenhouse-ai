@@ -1,0 +1,667 @@
+# ============================================================
+# Greenhouse AI — Docker Compose
+# All ports from MASTER_SPEC.md Section 2.2
+# Network: greenhouse_net (internal DNS by container name)
+# ============================================================
+
+networks:
+  greenhouse_net:
+    driver: bridge
+
+volumes:
+  edge1_db:
+  edge2_db:
+  central_db:
+  # Model weights volumes — shared between training and inference services
+  edge1_irrigation_weights:
+  edge2_irrigation_weights:
+  edge1_nutrition_weights:
+  edge2_nutrition_weights:
+  edge1_anomaly_weights:
+  edge2_anomaly_weights:
+
+# -----------------------------------------------------------------
+# Shared env fragments (YAML anchors)
+# -----------------------------------------------------------------
+x-edge1-env: &edge1-env
+  NODE_ID: greenhouse_01
+  NODE_PROFILE: node1
+  DISEASE_SERVICE_URL: http://edge1_disease:8101
+  IRRIGATION_SERVICE_URL: http://edge1_irrigation:8102
+  NUTRITION_SERVICE_URL: http://edge1_nutrition:8103
+  ANOMALY_SERVICE_URL: http://edge1_anomaly:8104
+  MONITOR_SERVICE_URL: http://edge1_output_monitor:8105
+  FUSION_SERVICE_URL: http://edge1_fusion:8106
+  ALARM_SERVICE_URL: http://edge1_alarm:8107
+  CENTRAL_API_URL: http://central_gateway:9000
+  DB_PATH: /data/greenhouse.db
+  SYNC_INTERVAL_SECONDS: 30
+
+x-edge2-env: &edge2-env
+  NODE_ID: greenhouse_02
+  NODE_PROFILE: node2
+  DISEASE_SERVICE_URL: http://edge2_disease:8101
+  IRRIGATION_SERVICE_URL: http://edge2_irrigation:8102
+  NUTRITION_SERVICE_URL: http://edge2_nutrition:8103
+  ANOMALY_SERVICE_URL: http://edge2_anomaly:8104
+  MONITOR_SERVICE_URL: http://edge2_output_monitor:8105
+  FUSION_SERVICE_URL: http://edge2_fusion:8106
+  ALARM_SERVICE_URL: http://edge2_alarm:8107
+  CENTRAL_API_URL: http://central_gateway:9000
+  DB_PATH: /data/greenhouse.db
+  SYNC_INTERVAL_SECONDS: 30
+
+x-train-common: &train-common
+  volumes:
+    - ./models/shared/data:/app/shared_data:ro
+  networks:
+    - greenhouse_net
+  restart: "no"
+
+services:
+
+  # ---------------------------------------------------------------
+  # TRAINING SERVICES (one-shot, exit on completion)
+  # ---------------------------------------------------------------
+
+  edge1_irrigation_train:
+    build:
+      context: ./models/irrigation
+    container_name: edge1_irrigation_train
+    command: python train.py
+    environment:
+      DATA_DIR: /app/shared_data
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models/shared/data:/app/shared_data:ro
+      - edge1_irrigation_weights:/app/model_weights
+    networks:
+      - greenhouse_net
+    restart: "no"
+
+  edge1_nutrition_train:
+    build:
+      context: ./models/nutrition
+    container_name: edge1_nutrition_train
+    command: python train.py
+    environment:
+      DATA_DIR: /app/shared_data
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models/shared/data:/app/shared_data:ro
+      - edge1_nutrition_weights:/app/model_weights
+    networks:
+      - greenhouse_net
+    restart: "no"
+
+  edge1_anomaly_train:
+    build:
+      context: ./models/anomaly
+    container_name: edge1_anomaly_train
+    command: python train.py
+    environment:
+      DATA_DIR: /app/shared_data
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models/shared/data:/app/shared_data:ro
+      - edge1_anomaly_weights:/app/model_weights
+    networks:
+      - greenhouse_net
+    restart: "no"
+
+  edge2_irrigation_train:
+    build:
+      context: ./models/irrigation
+    container_name: edge2_irrigation_train
+    command: python train.py
+    environment:
+      DATA_DIR: /app/shared_data
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models/shared/data:/app/shared_data:ro
+      - edge2_irrigation_weights:/app/model_weights
+    networks:
+      - greenhouse_net
+    restart: "no"
+
+  edge2_nutrition_train:
+    build:
+      context: ./models/nutrition
+    container_name: edge2_nutrition_train
+    command: python train.py
+    environment:
+      DATA_DIR: /app/shared_data
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models/shared/data:/app/shared_data:ro
+      - edge2_nutrition_weights:/app/model_weights
+    networks:
+      - greenhouse_net
+    restart: "no"
+
+  edge2_anomaly_train:
+    build:
+      context: ./models/anomaly
+    container_name: edge2_anomaly_train
+    command: python train.py
+    environment:
+      DATA_DIR: /app/shared_data
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models/shared/data:/app/shared_data:ro
+      - edge2_anomaly_weights:/app/model_weights
+    networks:
+      - greenhouse_net
+    restart: "no"
+
+  # ---------------------------------------------------------------
+  # EDGE NODE 1
+  # ---------------------------------------------------------------
+
+  edge1_gateway:
+    build:
+      context: ./edge/gateway
+    container_name: edge1_gateway
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8100
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8100:8100"
+    volumes:
+      - edge1_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge1_disease:
+        condition: service_healthy
+      edge1_irrigation:
+        condition: service_healthy
+      edge1_nutrition:
+        condition: service_healthy
+      edge1_anomaly:
+        condition: service_healthy
+      edge1_output_monitor:
+        condition: service_healthy
+      edge1_fusion:
+        condition: service_healthy
+      edge1_alarm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge1_disease:
+    build:
+      context: ./models/disease
+    container_name: edge1_disease
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8101
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8101:8101"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8101/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge1_irrigation:
+    build:
+      context: ./models/irrigation
+    container_name: edge1_irrigation
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8102
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8102:8102"
+    volumes:
+      - edge1_irrigation_weights:/app/model_weights:ro
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge1_irrigation_train:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8102/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  edge1_nutrition:
+    build:
+      context: ./models/nutrition
+    container_name: edge1_nutrition
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8103
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8103:8103"
+    volumes:
+      - edge1_nutrition_weights:/app/model_weights:ro
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge1_nutrition_train:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8103/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  edge1_anomaly:
+    build:
+      context: ./models/anomaly
+    container_name: edge1_anomaly
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8104
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8104:8104"
+    volumes:
+      - edge1_anomaly_weights:/app/model_weights:ro
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge1_anomaly_train:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8104/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  edge1_output_monitor:
+    build:
+      context: ./models/output_monitor
+    container_name: edge1_output_monitor
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8105
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8105:8105"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8105/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge1_fusion:
+    build:
+      context: ./edge/fusion_engine
+    container_name: edge1_fusion
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8106
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8106:8106"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8106/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge1_alarm:
+    build:
+      context: ./edge/alarm_engine
+    container_name: edge1_alarm
+    environment:
+      <<: *edge1-env
+      SERVICE_PORT: 8107
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8107:8107"
+    volumes:
+      - edge1_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8107/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------
+  # EDGE NODE 2
+  # ---------------------------------------------------------------
+
+  edge2_gateway:
+    build:
+      context: ./edge/gateway
+    container_name: edge2_gateway
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8100
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8200:8100"
+    volumes:
+      - edge2_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge2_disease:
+        condition: service_healthy
+      edge2_irrigation:
+        condition: service_healthy
+      edge2_nutrition:
+        condition: service_healthy
+      edge2_anomaly:
+        condition: service_healthy
+      edge2_output_monitor:
+        condition: service_healthy
+      edge2_fusion:
+        condition: service_healthy
+      edge2_alarm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge2_disease:
+    build:
+      context: ./models/disease
+    container_name: edge2_disease
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8101
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8201:8101"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8101/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge2_irrigation:
+    build:
+      context: ./models/irrigation
+    container_name: edge2_irrigation
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8102
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8202:8102"
+    volumes:
+      - edge2_irrigation_weights:/app/model_weights:ro
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge2_irrigation_train:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8102/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  edge2_nutrition:
+    build:
+      context: ./models/nutrition
+    container_name: edge2_nutrition
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8103
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8203:8103"
+    volumes:
+      - edge2_nutrition_weights:/app/model_weights:ro
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge2_nutrition_train:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8103/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  edge2_anomaly:
+    build:
+      context: ./models/anomaly
+    container_name: edge2_anomaly
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8104
+      MODEL_DIR: /app/model_weights
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8204:8104"
+    volumes:
+      - edge2_anomaly_weights:/app/model_weights:ro
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    depends_on:
+      edge2_anomaly_train:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8104/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  edge2_output_monitor:
+    build:
+      context: ./models/output_monitor
+    container_name: edge2_output_monitor
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8105
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8205:8105"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8105/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge2_fusion:
+    build:
+      context: ./edge/fusion_engine
+    container_name: edge2_fusion
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8106
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8206:8106"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8106/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  edge2_alarm:
+    build:
+      context: ./edge/alarm_engine
+    container_name: edge2_alarm
+    environment:
+      <<: *edge2-env
+      SERVICE_PORT: 8107
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8207:8107"
+    volumes:
+      - edge2_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8107/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------
+  # CENTRAL LAYER
+  # ---------------------------------------------------------------
+
+  central_gateway:
+    build:
+      context: ./central/gateway
+    container_name: central_gateway
+    environment:
+      SERVICE_PORT: 9000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-200}
+    ports:
+      - "9000:9000"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  central_aggregator:
+    build:
+      context: ./central/aggregator
+    container_name: central_aggregator
+    environment:
+      SERVICE_PORT: 9001
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DB_PATH: /data/greenhouse.db
+    ports:
+      - "9001:9001"
+    volumes:
+      - central_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9001/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  central_lstm:
+    build:
+      context: ./central/lstm_yield
+    container_name: central_lstm
+    environment:
+      SERVICE_PORT: 9002
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "9002:9002"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9002/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  central_llm:
+    build:
+      context: ./central/llm_explainer
+    container_name: central_llm
+    environment:
+      SERVICE_PORT: 9003
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-200}
+    ports:
+      - "9003:9003"
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9003/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------
+  # MONITORING
+  # ---------------------------------------------------------------
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana:/var/lib/grafana
+    networks:
+      - greenhouse_net
+    restart: unless-stopped

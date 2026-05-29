@@ -1,0 +1,48 @@
+# Keep real local secrets out of version control; example config stays tracked.
+.env
+.env.*
+!.env.example
+
+# Python creates these automatically; they are machine-specific and reproducible.
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Local virtual environments should not be shared because they are host-specific.
+.venv/
+venv/
+env/
+ENV/
+
+# Build and packaging outputs are generated artifacts, so keep them out of git.
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Trained weights are large generated artifacts; keep placeholders only.
+models/**/model_weights/*
+!models/**/model_weights/.gitkeep
+
+# Coverage and test cache data are generated locally and can be recreated.
+.coverage
+.coverage.*
+htmlcov/
+
+# Logs and temporary files are noise and often contain local-only data.
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Editor and OS metadata should stay out of the repository.
+.DS_Store
+.vscode/
+.idea/
+
+# Ignore common Node output in case a frontend is added later.
+node_modules/

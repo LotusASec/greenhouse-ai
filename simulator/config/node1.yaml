@@ -1,0 +1,24 @@
+profile: "node1"
+node_id: "greenhouse_01"
+name: "Sera A - Domates"
+
+sensor_profile:
+  temperature:   { mean: 24.0,  std: 0.5,  min: 18.0, max: 35.0  }
+  humidity:      { mean: 65.0,  std: 1.2,  min: 40.0, max: 90.0  }
+  soil_moisture: { mean: 55.0,  std: 0.8,  min: 20.0, max: 80.0  }
+  light:         { mean: 700.0, std: 5.0,  min: 0.0,  max: 1000.0 }
+  ec:            { mean: 2.2,   std: 0.05, min: 1.0,  max: 3.5   }
+  ph:            { mean: 6.3,   std: 0.02, min: 5.5,  max: 7.0   }
+
+image_class_distribution:
+  healthy:      0.80
+  early_blight: 0.10
+  late_blight:  0.05
+  leaf_mold:    0.03
+  other:        0.02
+
+emit_interval_seconds: 1
+
+anomaly_injection:
+  enabled:     false
+  probability: 0.0

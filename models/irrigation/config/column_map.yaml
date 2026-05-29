@@ -1,0 +1,16 @@
+# Irrigation model — column mapping config (TR-17)
+# Feature order matches TR-11 (FROZEN — do not reorder keys).
+# Left = internal project name, Right = actual CSV column name.
+# To switch to real-sensor CSV: update right side only.
+
+features:
+  temperature:   "temperature"
+  humidity:      "humidity"
+  soil_moisture: "soil_moisture"
+  light:         "light"
+  ec:            "ec"
+  ph:            "ph"
+
+labels:
+  irrigate:      "irrigate"
+  amount_liters: "amount_liters"

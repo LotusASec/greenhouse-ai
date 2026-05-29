@@ -1,0 +1,13 @@
+# Disease model — class mapping config (TR-17)
+# Left side = internal project class name (frozen, used in code)
+# Right side = PlantVillage folder name(s) in raw dataset
+# To switch datasets: update the right side only — no Python changes.
+
+class_mapping:
+  healthy:      "Tomato___healthy"
+  early_blight: "Tomato___Early_blight"
+  late_blight:  "Tomato___Late_blight"
+  leaf_mold:    "Tomato___Leaf_Mold"
+  other:
+    - "Tomato___Septoria_leaf_spot"
+    - "Tomato___Spider_mites Two-spotted_spider_mite"

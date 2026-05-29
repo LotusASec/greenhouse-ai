@@ -1,0 +1,24 @@
+profile: "node2"
+node_id: "greenhouse_02"
+name: "Sera B - Salatalık"
+
+sensor_profile:
+  temperature:   { mean: 23.0,  std: 0.6,  min: 17.0, max: 34.0  }
+  humidity:      { mean: 58.0,  std: 1.0,  min: 35.0, max: 85.0  }
+  soil_moisture: { mean: 60.0,  std: 0.9,  min: 25.0, max: 85.0  }
+  light:         { mean: 650.0, std: 6.0,  min: 0.0,  max: 1000.0 }
+  ec:            { mean: 2.0,   std: 0.06, min: 1.0,  max: 3.5   }
+  ph:            { mean: 6.1,   std: 0.03, min: 5.5,  max: 7.0   }
+
+image_class_distribution:
+  healthy:      0.92
+  early_blight: 0.04
+  late_blight:  0.02
+  leaf_mold:    0.01
+  other:        0.01
+
+emit_interval_seconds: 1
+
+anomaly_injection:
+  enabled:     false
+  probability: 0.0
