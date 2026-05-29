@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Greenhouse AI — Phase 2A/2B Dashboard</title>
+<title>Greenhouse AI — Phase 2A/2B/2C Dashboard</title>
 <style>
 /* ── Reset & Variables ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,7 +108,7 @@ body {
 /* ── Health Grid ────────────────────────────────────────────── */
 .health-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
 }
 .health-item {
@@ -368,10 +368,10 @@ tr:hover td { background: rgba(255,255,255,.02); }
 <body>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
-<div class="page-title">🌿 Greenhouse AI — Phase 2A/2B Verification Dashboard</div>
+<div class="page-title">🌿 Greenhouse AI — Phase 2A/2B/2C Verification Dashboard</div>
 <div class="page-sub">
-  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp;
-  Payloads match MASTER_SPEC §3.2 · §3.3 · §3.4 · §3.5
+  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp; monitor :8105 &nbsp;·&nbsp;
+  Payloads match MASTER_SPEC §3.2 · §3.3 · §3.4 · §3.5 · §3.6
 </div>
 
 <!-- ── Health Panel ───────────────────────────────────────── -->
@@ -486,6 +486,49 @@ tr:hover td { background: rgba(255,255,255,.02); }
   <div id="diseaseRaw" style="margin-top:12px"></div>
 </div>
 
+<!-- ── Monitor Section ───────────────────────────────────── -->
+<div class="card" style="margin-bottom:14px">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">📊 Model Output Monitor — MASTER_SPEC §3.6</div>
+    <span style="font-size:11px; color:var(--muted)">port 8105</span>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+
+    <!-- Drift Simulation -->
+    <div>
+      <div class="section-title">Drift Simulation</div>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:12px">
+        Sends 40 normal values (confidence ≈ 0.88) then 1 spike (0.10) to
+        <code style="color:var(--cyan)">/monitor/disease</code>.
+        Verifies z-score + IQR anomaly detection.
+      </div>
+      <button class="btn btn-primary" id="driftBtn" onclick="simulateDrift()"
+        style="width:100%; background:var(--purple); border-color:var(--purple)">
+        ⚡ Simulate Drift
+      </button>
+      <div id="driftResult" style="margin-top:12px">
+        <div style="text-align:center; color:var(--muted); padding:20px 0; font-size:12px">
+          Click "Simulate Drift" to run drift detection.
+        </div>
+      </div>
+    </div>
+
+    <!-- Buffer Status Panel -->
+    <div>
+      <div class="card-header" style="margin-bottom:8px">
+        <div class="section-title" style="margin:0">Buffer Status — GET /status</div>
+        <button class="btn" style="font-size:11px; padding:4px 9px" onclick="refreshMonitorStatus()">↻ Refresh</button>
+      </div>
+      <div id="monitorStatus">
+        <div style="text-align:center; color:var(--muted); padding:20px 0; font-size:12px">
+          Click Refresh to load buffer stats.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── Request Log ────────────────────────────────────────── -->
 <div class="card">
   <div class="card-header">
@@ -520,6 +563,7 @@ const SERVICES = [
   { key: 'irrigation', label: 'Irrigation', port: 8102, icon: '💧', color: '#3b82f6' },
   { key: 'nutrition',  label: 'Nutrition',  port: 8103, icon: '🌿', color: '#22c55e' },
   { key: 'anomaly',    label: 'Anomaly',    port: 8104, icon: '🔍', color: '#a855f7' },
+  { key: 'monitor',   label: 'Monitor',    port: 8105, icon: '📊', color: '#06b6d4' },
 ];
 
 const SENSORS = [
@@ -1068,6 +1112,135 @@ function renderDiseaseRaw(payload, resp, status, ms) {
       <summary><span class="caret">▶</span>&nbsp; Disease Response · HTTP ${status} · ${ms}ms</summary>
       <pre>${esc(JSON.stringify(resp, null, 2))}</pre>
     </details>`;
+}
+
+// ─── Monitor Drift Simulation ─────────────────────────────────
+async function simulateDrift() {
+  const btn = document.getElementById('driftBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Running…';
+  document.getElementById('driftResult').innerHTML =
+    '<div style="text-align:center; padding:12px"><span class="spinner"></span> Sending 40 normal values…</div>';
+
+  const MONITOR_PORT = 8105;
+  const payload = (v) => ({
+    node_id:      'greenhouse_01',
+    timestamp:    new Date().toISOString(),
+    metric_value: v,
+  });
+
+  const postMonitor = (v) => fetch(`http://localhost:${MONITOR_PORT}/monitor/disease`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload(v)),
+    signal:  AbortSignal.timeout(5000),
+  }).then(r => r.json());
+
+  try {
+    // 40 normal values
+    for (let i = 0; i < 40; i++) {
+      const v = 0.85 + (Math.random() - 0.5) * 0.06;
+      await postMonitor(Math.min(1, Math.max(0, v)));
+    }
+
+    document.getElementById('driftResult').innerHTML =
+      '<div style="padding:8px; color:var(--muted); font-size:12px">40 normal values sent. Sending spike…</div>';
+
+    // 1 spike
+    const spike = await postMonitor(0.10);
+    pushLog('Monitor /monitor/disease (spike)', 200, 0,
+      `is_anomaly:${spike.is_anomaly}  z:${spike.z_score}`);
+
+    const isAnomaly = spike.is_anomaly === true;
+    const badge = isAnomaly
+      ? '<span class="badge badge-red">🚨 DRIFT DETECTED</span>'
+      : '<span class="badge badge-yellow">⚠️ Not detected</span>';
+
+    document.getElementById('driftResult').innerHTML = `
+      <div class="result-card" style="border-color:rgba(6,182,212,.3)">
+        <div class="result-header">
+          <span class="result-model" style="color:var(--cyan)">📊 Spike Result (disease, value=0.10)</span>
+        </div>
+        <div class="kv-grid">
+          <div class="kv-row"><span class="kv-key">is_anomaly</span>${badge}</div>
+          <div class="kv-row">
+            <span class="kv-key">z_score</span>
+            <span class="kv-val" style="color:${isAnomaly ? 'var(--red)' : 'var(--cyan)'}">
+              ${spike.z_score}
+            </span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">window_mean</span>
+            <span class="kv-val" style="color:var(--muted)">${spike.window_mean}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">window_std</span>
+            <span class="kv-val" style="color:var(--muted)">${spike.window_std}</span>
+          </div>
+        </div>
+      </div>`;
+
+    await refreshMonitorStatus();
+  } catch(e) {
+    document.getElementById('driftResult').innerHTML =
+      `<div class="err-box">Error: ${esc(e.message)}<div class="err-hint">Is monitor service running on port ${MONITOR_PORT}?</div></div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Simulate Drift';
+}
+
+// ─── Monitor Status Panel ─────────────────────────────────────
+async function refreshMonitorStatus() {
+  const MONITOR_PORT = 8105;
+  try {
+    const r = await fetch(`http://localhost:${MONITOR_PORT}/status`,
+      { signal: AbortSignal.timeout(4000) });
+    const data = await r.json();
+    pushLog('Monitor /status', r.status, 0, `models: ${Object.keys(data).join(', ')}`);
+
+    const rows = Object.entries(data).map(([model, s]) => {
+      const warmBadge = s.warming_up
+        ? '<span class="badge badge-yellow" style="font-size:10px">warming up</span>'
+        : '<span class="badge badge-green"  style="font-size:10px">ready</span>';
+      const anomalyColor = s.anomaly_rate > 0.05 ? 'var(--red)' : 'var(--green)';
+      return `
+        <div class="result-card" style="margin-bottom:8px; padding:10px 12px">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+            <span style="font-size:12px; font-weight:700">${esc(model)}</span>
+            ${warmBadge}
+          </div>
+          <div class="kv-grid">
+            <div class="kv-row">
+              <span class="kv-key">buffer</span>
+              <span class="kv-val" style="color:var(--cyan)">${s.buffer_size} / 50</span>
+            </div>
+            <div class="kv-row">
+              <span class="kv-key">mean</span>
+              <span class="kv-val">${s.window_mean}</span>
+            </div>
+            <div class="kv-row">
+              <span class="kv-key">std</span>
+              <span class="kv-val">${s.window_std}</span>
+            </div>
+            <div class="kv-row">
+              <span class="kv-key">anomaly rate</span>
+              <span class="kv-val" style="color:${anomalyColor}">${(s.anomaly_rate * 100).toFixed(1)}%</span>
+            </div>
+            <div class="kv-row">
+              <span class="kv-key">total events</span>
+              <span class="kv-val" style="color:var(--muted)">${s.total_events}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('monitorStatus').innerHTML = rows ||
+      '<div style="color:var(--muted); font-size:12px; padding:12px">No data yet.</div>';
+  } catch(e) {
+    document.getElementById('monitorStatus').innerHTML =
+      `<div class="err-box">Cannot reach monitor service: ${esc(e.message)}</div>`;
+  }
 }
 
 // ─── Boot ─────────────────────────────────────────────────────
