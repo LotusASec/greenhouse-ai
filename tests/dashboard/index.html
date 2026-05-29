@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Greenhouse AI — Phase 2A/2B/2C Dashboard</title>
+<title>Greenhouse AI — Phase 3 Dashboard</title>
 <style>
 /* ── Reset & Variables ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,9 +108,15 @@ body {
 /* ── Health Grid ────────────────────────────────────────────── */
 .health-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 10px;
 }
+
+/* ── Alarm Badges ───────────────────────────────────────────── */
+.badge-info     { background: rgba(90,96,122,.15);  color: var(--muted);  border: 1px solid rgba(90,96,122,.4);  }
+.badge-warning  { background: rgba(245,158,11,.12); color: var(--yellow); border: 1px solid rgba(245,158,11,.35); }
+.badge-high     { background: rgba(249,115,22,.12); color: #f97316;       border: 1px solid rgba(249,115,22,.35); }
+.badge-critical { background: rgba(239,68,68,.14);  color: var(--red);    border: 1px solid rgba(239,68,68,.4);  }
 .health-item {
   padding: 12px 10px;
   background: var(--surface2);
@@ -368,10 +374,10 @@ tr:hover td { background: rgba(255,255,255,.02); }
 <body>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
-<div class="page-title">🌿 Greenhouse AI — Phase 2A/2B/2C Verification Dashboard</div>
+<div class="page-title">🌿 Greenhouse AI — Phase 3 Verification Dashboard</div>
 <div class="page-sub">
-  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp; monitor :8105 &nbsp;·&nbsp;
-  Payloads match MASTER_SPEC §3.2 · §3.3 · §3.4 · §3.5 · §3.6
+  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp; monitor :8105 &nbsp;·&nbsp; <strong style="color:var(--cyan)">fusion :8106</strong> &nbsp;·&nbsp;
+  Payloads match MASTER_SPEC §3.2–§3.8 · Rules from rules.yaml only
 </div>
 
 <!-- ── Health Panel ───────────────────────────────────────── -->
@@ -529,6 +535,79 @@ tr:hover td { background: rgba(255,255,255,.02); }
   </div>
 </div>
 
+<!-- ── Fusion Engine Section ──────────────────────────────── -->
+<div class="card" style="margin-bottom:14px">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">⚡ Fusion / Rule Engine — MASTER_SPEC §5 · §3.7 · §3.8</div>
+    <span style="font-size:11px; color:var(--muted)">port 8106</span>
+  </div>
+  <div style="display:grid; grid-template-columns:300px 1fr; gap:16px">
+
+    <!-- Left: scenario buttons -->
+    <div>
+      <div class="section-title">Test Scenarios</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px">
+
+        <button class="btn" onclick="runFusionScenario('normal')"
+          style="flex-direction:column; gap:3px; padding:10px 6px; text-align:center">
+          <span style="font-size:18px">🟢</span>
+          <span style="font-size:11px; font-weight:600">Normal</span>
+          <span style="font-size:10px; color:var(--muted)">INFO expected</span>
+        </button>
+
+        <button class="btn" onclick="runFusionScenario('fungal')"
+          style="flex-direction:column; gap:3px; padding:10px 6px; text-align:center">
+          <span style="font-size:18px">🍄</span>
+          <span style="font-size:11px; font-weight:600">Fungal Risk</span>
+          <span style="font-size:10px; color:var(--muted)">CRITICAL expected</span>
+        </button>
+
+        <button class="btn" onclick="runFusionScenario('drift')"
+          style="flex-direction:column; gap:3px; padding:10px 6px; text-align:center">
+          <span style="font-size:18px">📉</span>
+          <span style="font-size:11px; font-weight:600">Drift</span>
+          <span style="font-size:10px; color:var(--muted)">WARNING expected</span>
+        </button>
+
+        <button class="btn" onclick="runFusionScenario('irrigation')"
+          style="flex-direction:column; gap:3px; padding:10px 6px; text-align:center">
+          <span style="font-size:18px">💧</span>
+          <span style="font-size:11px; font-weight:600">Irrigation</span>
+          <span style="font-size:10px; color:var(--muted)">WARNING expected</span>
+        </button>
+      </div>
+
+      <!-- Rules info -->
+      <button class="btn" onclick="loadFusionRules()"
+        style="width:100%; justify-content:center; font-size:11px">
+        📋 Show Loaded Rules
+      </button>
+      <div id="fusionRulesInfo" style="margin-top:8px; font-size:11px; color:var(--muted)"></div>
+    </div>
+
+    <!-- Right: result + history -->
+    <div>
+      <div class="section-title">Last Alarm Result</div>
+      <div id="fusionResult">
+        <div style="text-align:center; color:var(--muted); padding:20px 0; font-size:12px">
+          Click a scenario to evaluate.
+        </div>
+      </div>
+
+      <!-- Alarm history -->
+      <div style="margin-top:12px">
+        <div class="section-title">Alarm History (this session)</div>
+        <div id="fusionHistory">
+          <div style="text-align:center; color:var(--muted); padding:10px 0; font-size:12px">
+            No alarms yet.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── Request Log ────────────────────────────────────────── -->
 <div class="card">
   <div class="card-header">
@@ -563,7 +642,8 @@ const SERVICES = [
   { key: 'irrigation', label: 'Irrigation', port: 8102, icon: '💧', color: '#3b82f6' },
   { key: 'nutrition',  label: 'Nutrition',  port: 8103, icon: '🌿', color: '#22c55e' },
   { key: 'anomaly',    label: 'Anomaly',    port: 8104, icon: '🔍', color: '#a855f7' },
-  { key: 'monitor',   label: 'Monitor',    port: 8105, icon: '📊', color: '#06b6d4' },
+  { key: 'monitor',    label: 'Monitor',    port: 8105, icon: '📊', color: '#06b6d4' },
+  { key: 'fusion',     label: 'Fusion',     port: 8106, icon: '⚡', color: '#f59e0b' },
 ];
 
 const SENSORS = [
@@ -1240,6 +1320,231 @@ async function refreshMonitorStatus() {
   } catch(e) {
     document.getElementById('monitorStatus').innerHTML =
       `<div class="err-box">Cannot reach monitor service: ${esc(e.message)}</div>`;
+  }
+}
+
+// ─── Fusion Engine ────────────────────────────────────────────
+const FUSION_URL = 'http://localhost:8106';
+let fusionAlarmHistory = [];
+
+const FUSION_SCENARIOS = {
+  normal: {
+    node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+    sensor_reading: { node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      sensors: { temperature: 24, humidity: 60, soil_moisture: 55, light: 800, ec: 2.0, ph: 6.5 } },
+    disease_output: { model: 'resnet50_disease', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      top_prediction: 'healthy', top_confidence: 0.05,
+      class_probabilities: { healthy: 0.95, early_blight: 0.05, late_blight: 0.0, leaf_mold: 0.0, other: 0.0 },
+      inference_time_ms: 10 },
+    anomaly_output: { model: 'isolation_forest_anomaly', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      is_anomaly: false, anomaly_score: 0.1, inference_time_ms: 2 },
+    irrigation_output: { model: 'xgboost_irrigation', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      irrigate: false, amount_liters: 0.0, confidence: 0.95, inference_time_ms: 3 },
+    nutrition_output: { model: 'rf_nutrition', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      deficiency_class: 'normal', fertilizer_recommendation: 'none', confidence: 0.95, inference_time_ms: 2 },
+    monitor_events: [],
+  },
+
+  fungal: {
+    node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+    sensor_reading: { node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      sensors: { temperature: 22, humidity: 85, soil_moisture: 70, light: 400, ec: 2.0, ph: 6.1 } },
+    disease_output: { model: 'resnet50_disease', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      top_prediction: 'early_blight', top_confidence: 0.91,
+      class_probabilities: { healthy: 0.09, early_blight: 0.91, late_blight: 0.0, leaf_mold: 0.0, other: 0.0 },
+      inference_time_ms: 10 },
+    anomaly_output: { model: 'isolation_forest_anomaly', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      is_anomaly: false, anomaly_score: 0.05, inference_time_ms: 2 },
+    irrigation_output: { model: 'xgboost_irrigation', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      irrigate: false, amount_liters: 0.0, confidence: 0.9, inference_time_ms: 3 },
+    nutrition_output: { model: 'rf_nutrition', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      deficiency_class: 'normal', fertilizer_recommendation: 'none', confidence: 0.92, inference_time_ms: 2 },
+    monitor_events: [],
+  },
+
+  drift: {
+    node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+    sensor_reading: { node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      sensors: { temperature: 28, humidity: 60, soil_moisture: 55, light: 800, ec: 2.0, ph: 6.5 } },
+    disease_output: { model: 'resnet50_disease', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      top_prediction: 'healthy', top_confidence: 0.05,
+      class_probabilities: { healthy: 0.95, early_blight: 0.05, late_blight: 0.0, leaf_mold: 0.0, other: 0.0 },
+      inference_time_ms: 10 },
+    anomaly_output: { model: 'isolation_forest_anomaly', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      is_anomaly: true, anomaly_score: -0.15, inference_time_ms: 2 },
+    irrigation_output: { model: 'xgboost_irrigation', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      irrigate: false, amount_liters: 0.0, confidence: 0.9, inference_time_ms: 3 },
+    nutrition_output: { model: 'rf_nutrition', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      deficiency_class: 'normal', fertilizer_recommendation: 'none', confidence: 0.92, inference_time_ms: 2 },
+    monitor_events: [{
+      node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      model_name: 'resnet50_disease', metric_value: 0.10,
+      z_score: 3.5, window_mean: 0.88, window_std: 0.05, is_anomaly: true,
+    }],
+  },
+
+  irrigation: {
+    node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+    sensor_reading: { node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      sensors: { temperature: 28, humidity: 45, soil_moisture: 22, light: 800, ec: 2.0, ph: 6.5 } },
+    disease_output: { model: 'resnet50_disease', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      top_prediction: 'healthy', top_confidence: 0.05,
+      class_probabilities: { healthy: 0.95, early_blight: 0.05, late_blight: 0.0, leaf_mold: 0.0, other: 0.0 },
+      inference_time_ms: 10 },
+    anomaly_output: { model: 'isolation_forest_anomaly', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      is_anomaly: false, anomaly_score: 0.1, inference_time_ms: 2 },
+    irrigation_output: { model: 'xgboost_irrigation', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      irrigate: true, amount_liters: 3.5, confidence: 0.97, inference_time_ms: 3 },
+    nutrition_output: { model: 'rf_nutrition', node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+      deficiency_class: 'normal', fertilizer_recommendation: 'none', confidence: 0.92, inference_time_ms: 2 },
+    monitor_events: [],
+  },
+};
+
+async function runFusionScenario(name) {
+  const payload = JSON.parse(JSON.stringify(FUSION_SCENARIOS[name]));
+  payload.timestamp = new Date().toISOString();
+
+  document.getElementById('fusionResult').innerHTML =
+    '<div style="text-align:center; padding:12px"><span class="spinner"></span></div>';
+
+  const t = Date.now();
+  try {
+    const r = await fetch(`${FUSION_URL}/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    const ms = Date.now() - t;
+    const alarm = await r.json();
+    pushLog(`Fusion /evaluate (${name})`, r.status, ms,
+      `level:${alarm.level} rule:${alarm.rule_id || alarm.source}`);
+    renderFusionResult(alarm, name);
+    addFusionHistory(alarm, name);
+  } catch(e) {
+    const ms = Date.now() - t;
+    pushLog(`Fusion /evaluate (${name})`, 0, ms, 'error: ' + e.message);
+    document.getElementById('fusionResult').innerHTML =
+      `<div class="err-box">Error: ${esc(e.message)}<div class="err-hint">Is fusion service running on port 8106?</div></div>`;
+  }
+}
+
+function alarmLevelBadge(level) {
+  const map = {
+    INFO:     '<span class="badge badge-info">ℹ INFO</span>',
+    WARNING:  '<span class="badge badge-warning">⚠ WARNING</span>',
+    HIGH:     '<span class="badge badge-high">🔶 HIGH</span>',
+    CRITICAL: '<span class="badge badge-critical">🚨 CRITICAL</span>',
+  };
+  return map[level] || `<span class="badge badge-yellow">${esc(level)}</span>`;
+}
+
+function alarmSourceBadge(source) {
+  const map = {
+    rule_engine:   '<span class="badge badge-blue" style="font-size:10px">rule_engine</span>',
+    model_monitor: '<span class="badge badge-purple" style="font-size:10px">model_monitor</span>',
+  };
+  return map[source] || `<span class="badge" style="font-size:10px">${esc(source)}</span>`;
+}
+
+function renderFusionResult(alarm, scenario) {
+  const levelColors = {
+    INFO: 'var(--muted)', WARNING: 'var(--yellow)', HIGH: '#f97316', CRITICAL: 'var(--red)'
+  };
+  const borderMap = {
+    INFO: 'rgba(90,96,122,.3)', WARNING: 'rgba(245,158,11,.35)',
+    HIGH: 'rgba(249,115,22,.35)', CRITICAL: 'rgba(239,68,68,.4)'
+  };
+  const lc = levelColors[alarm.level] || 'var(--text)';
+  const bc = borderMap[alarm.level] || 'var(--border)';
+
+  document.getElementById('fusionResult').innerHTML = `
+    <div class="result-card" style="border-color:${bc}">
+      <div class="result-header">
+        <span style="font-size:12px; font-weight:700; color:${lc}">⚡ Fusion Result — ${esc(scenario)}</span>
+        <span style="font-size:10px; font-family:var(--font-mono); color:var(--muted)">${esc(alarm.alarm_id)}</span>
+      </div>
+      <div class="kv-grid">
+        <div class="kv-row">
+          <span class="kv-key">level</span>
+          ${alarmLevelBadge(alarm.level)}
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">source</span>
+          ${alarmSourceBadge(alarm.source)}
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">rule_id</span>
+          <span class="kv-val" style="color:var(--cyan)">${alarm.rule_id || '—'}</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">synced</span>
+          <span class="kv-val" style="color:var(--muted)">${alarm.synced}</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">llm_explanation</span>
+          <span class="kv-val" style="color:var(--muted)">${alarm.llm_explanation ?? 'null'}</span>
+        </div>
+      </div>
+      ${Object.keys(alarm.trigger_values || {}).length ? `
+      <div style="margin-top:10px; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px">
+        Trigger Values
+      </div>
+      <pre style="font-size:10px; max-height:80px">${esc(JSON.stringify(alarm.trigger_values, null, 2))}</pre>
+      ` : ''}
+    </div>`;
+}
+
+function addFusionHistory(alarm, scenario) {
+  fusionAlarmHistory.unshift({ alarm, scenario, ts: new Date().toLocaleTimeString() });
+  if (fusionAlarmHistory.length > 10) fusionAlarmHistory.length = 10;
+  renderFusionHistory();
+}
+
+function renderFusionHistory() {
+  if (!fusionAlarmHistory.length) return;
+  const rows = fusionAlarmHistory.map(({ alarm, scenario, ts }) => {
+    const levelColors = {
+      INFO: 'var(--muted)', WARNING: 'var(--yellow)', HIGH: '#f97316', CRITICAL: 'var(--red)'
+    };
+    const lc = levelColors[alarm.level] || 'var(--text)';
+    return `<tr>
+      <td style="font-family:var(--font-mono); color:var(--muted)">${esc(ts)}</td>
+      <td style="font-weight:600; color:${lc}">${esc(alarm.level)}</td>
+      <td style="color:var(--cyan)">${alarm.rule_id || alarm.source}</td>
+      <td style="color:var(--muted)">${esc(scenario)}</td>
+      <td style="font-family:var(--font-mono); font-size:10px; color:var(--muted)">${esc(alarm.alarm_id)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('fusionHistory').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="width:70px">Time</th>
+          <th style="width:75px">Level</th>
+          <th style="width:90px">Rule/Source</th>
+          <th style="width:80px">Scenario</th>
+          <th>Alarm ID</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function loadFusionRules() {
+  try {
+    const r = await fetch(`${FUSION_URL}/rules`, { signal: AbortSignal.timeout(4000) });
+    const data = await r.json();
+    document.getElementById('fusionRulesInfo').innerHTML =
+      `<span style="color:var(--green)">✓ ${data.count} rules loaded from rules.yaml</span><br>` +
+      data.rules.map(rule =>
+        `<span style="color:var(--muted)">${esc(rule.id)}</span> <span style="color:var(--text)">${esc(rule.name)}</span> → <span style="color:var(--cyan)">${esc(rule.action.alarm_level)}</span>`
+      ).join('<br>');
+  } catch(e) {
+    document.getElementById('fusionRulesInfo').innerHTML =
+      `<span style="color:var(--red)">✗ ${esc(e.message)}</span>`;
   }
 }
 

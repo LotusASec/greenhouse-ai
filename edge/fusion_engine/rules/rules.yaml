@@ -1,142 +1,130 @@
-# Fusion rules — MASTER_SPEC.md Section 5 (FROZEN)
-# Do NOT modify without explicit spec approval.
-
 rules:
-  - id: "RULE_001"
-    name: "critical_fungal_risk"
-    conditions:
-      - field: "sensor_reading.sensors.humidity"
-        operator: "gt"
-        value: 80
-      - field: "disease_output.top_confidence"
-        operator: "gt"
-        value: 0.85
-      - field: "anomaly_output.is_anomaly"
-        operator: "eq"
-        value: false
-    action:
-      alarm_level: "CRITICAL"
-      message_key: "fungal_risk_critical"
-
-  - id: "RULE_002"
-    name: "irrigation_needed"
-    conditions:
-      - field: "sensor_reading.sensors.soil_moisture"
-        operator: "lt"
-        value: 30
-      - field: "irrigation_output.irrigate"
-        operator: "eq"
-        value: true
-    action:
-      alarm_level: "WARNING"
-      message_key: "irrigation_required"
-
-  - id: "RULE_003"
-    name: "ph_and_nutrition_problem"
-    conditions:
-      - field: "sensor_reading.sensors.ph"
-        operator: "lt"
-        value: 5.5
-      - field: "nutrition_output.deficiency_class"
-        operator: "neq"
-        value: "normal"
-    action:
-      alarm_level: "HIGH"
-      message_key: "ph_nutrition_problem"
-
-  - id: "RULE_004"
-    name: "sensor_anomaly_high_temp"
-    conditions:
-      - field: "anomaly_output.is_anomaly"
-        operator: "eq"
-        value: true
-      - field: "sensor_reading.sensors.temperature"
-        operator: "gt"
-        value: 32
-    action:
-      alarm_level: "HIGH"
-      message_key: "sensor_anomaly_high_temp"
-
-  - id: "RULE_005"
-    name: "low_light_warning"
-    conditions:
-      - field: "sensor_reading.sensors.light"
-        operator: "lt"
-        value: 200
-    action:
-      alarm_level: "WARNING"
-      message_key: "low_light_warning"
-
-  - id: "RULE_006"
-    name: "critical_ec_nitrogen"
-    conditions:
-      - field: "sensor_reading.sensors.ec"
-        operator: "lt"
-        value: 1.2
-      - field: "nutrition_output.deficiency_class"
-        operator: "eq"
-        value: "N_deficiency"
-    action:
-      alarm_level: "HIGH"
-      message_key: "ec_nitrogen_critical"
-
-  - id: "RULE_007"
-    name: "disease_without_sensor_anomaly"
-    conditions:
-      - field: "disease_output.top_confidence"
-        operator: "gt"
-        value: 0.75
-      - field: "disease_output.top_prediction"
-        operator: "neq"
-        value: "healthy"
-      - field: "anomaly_output.is_anomaly"
-        operator: "eq"
-        value: false
-    action:
-      alarm_level: "WARNING"
-      message_key: "disease_suspected"
-
-  - id: "RULE_008"
-    name: "overwatering_risk"
-    conditions:
-      - field: "irrigation_output.amount_liters"
-        operator: "gt"
-        value: 5.0
-      - field: "sensor_reading.sensors.humidity"
-        operator: "gt"
-        value: 85
-    action:
-      alarm_level: "WARNING"
-      message_key: "overwatering_risk"
-
-  - id: "RULE_009"
-    name: "multiple_nutrient_deficiency"
-    conditions:
-      - field: "sensor_reading.sensors.ec"
-        operator: "lt"
-        value: 1.5
-      - field: "sensor_reading.sensors.ph"
-        operator: "gt"
-        value: 7.0
-      - field: "nutrition_output.deficiency_class"
-        operator: "neq"
-        value: "normal"
-    action:
-      alarm_level: "CRITICAL"
-      message_key: "multiple_nutrient_deficiency"
-
-  - id: "RULE_010"
-    name: "all_systems_normal"
-    conditions:
-      - field: "anomaly_output.is_anomaly"
-        operator: "eq"
-        value: false
-      - field: "disease_output.top_prediction"
-        operator: "eq"
-        value: "healthy"
-      - field: "nutrition_output.deficiency_class"
-        operator: "eq"
-        value: "normal"
-    action:
-      alarm_level: "INFO"
-      message_key: "all_systems_normal"
+- id: RULE_001
+  name: critical_fungal_risk
+  conditions:
+  - field: sensor_reading.sensors.humidity
+    operator: gt
+    value: 80.0
+  - field: disease_output.top_confidence
+    operator: gt
+    value: 0.85
+  - field: anomaly_output.is_anomaly
+    operator: eq
+    value: false
+  action:
+    alarm_level: CRITICAL
+    message_key: fungal_risk_critical
+- id: RULE_002
+  name: irrigation_needed
+  conditions:
+  - field: sensor_reading.sensors.soil_moisture
+    operator: lt
+    value: 30
+  - field: irrigation_output.irrigate
+    operator: eq
+    value: true
+  action:
+    alarm_level: WARNING
+    message_key: irrigation_required
+- id: RULE_003
+  name: ph_and_nutrition_problem
+  conditions:
+  - field: sensor_reading.sensors.ph
+    operator: lt
+    value: 5.5
+  - field: nutrition_output.deficiency_class
+    operator: neq
+    value: normal
+  action:
+    alarm_level: HIGH
+    message_key: ph_nutrition_problem
+- id: RULE_004
+  name: sensor_anomaly_high_temp
+  conditions:
+  - field: anomaly_output.is_anomaly
+    operator: eq
+    value: true
+  - field: sensor_reading.sensors.temperature
+    operator: gt
+    value: 32
+  action:
+    alarm_level: HIGH
+    message_key: sensor_anomaly_high_temp
+- id: RULE_005
+  name: low_light_warning
+  conditions:
+  - field: sensor_reading.sensors.light
+    operator: lt
+    value: 200
+  action:
+    alarm_level: WARNING
+    message_key: low_light_warning
+- id: RULE_006
+  name: critical_ec_nitrogen
+  conditions:
+  - field: sensor_reading.sensors.ec
+    operator: lt
+    value: 1.2
+  - field: nutrition_output.deficiency_class
+    operator: eq
+    value: N_deficiency
+  action:
+    alarm_level: HIGH
+    message_key: ec_nitrogen_critical
+- id: RULE_007
+  name: disease_without_sensor_anomaly
+  conditions:
+  - field: disease_output.top_confidence
+    operator: gt
+    value: 0.75
+  - field: disease_output.top_prediction
+    operator: neq
+    value: healthy
+  - field: anomaly_output.is_anomaly
+    operator: eq
+    value: false
+  action:
+    alarm_level: WARNING
+    message_key: disease_suspected
+- id: RULE_008
+  name: overwatering_risk
+  conditions:
+  - field: irrigation_output.amount_liters
+    operator: gt
+    value: 5.0
+  - field: sensor_reading.sensors.humidity
+    operator: gt
+    value: 85
+  action:
+    alarm_level: WARNING
+    message_key: overwatering_risk
+- id: RULE_009
+  name: multiple_nutrient_deficiency
+  conditions:
+  - field: sensor_reading.sensors.ec
+    operator: lt
+    value: 1.5
+  - field: sensor_reading.sensors.ph
+    operator: gt
+    value: 7.0
+  - field: nutrition_output.deficiency_class
+    operator: neq
+    value: normal
+  action:
+    alarm_level: CRITICAL
+    message_key: multiple_nutrient_deficiency
+- id: RULE_010
+  name: all_systems_normal
+  conditions:
+  - field: anomaly_output.is_anomaly
+    operator: eq
+    value: false
+  - field: disease_output.top_prediction
+    operator: eq
+    value: healthy
+  - field: nutrition_output.deficiency_class
+    operator: eq
+    value: normal
+  action:
+    alarm_level: INFO
+    message_key: all_systems_normal
