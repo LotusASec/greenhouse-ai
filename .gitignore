@@ -46,3 +46,7 @@ htmlcov/
 
 # Ignore common Node output in case a frontend is added later.
 node_modules/
+
+models/disease/data/
+models/shared/data/
+*.csv

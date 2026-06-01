@@ -13,8 +13,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from inference import AnomalyInference
-
+# Eğer api klasörünün bir üst dizinindeyse (models/anomaly/inference.py ise)
+from ..inference import AnomalyInference
 SERVICE_NAME    = "edge_anomaly"
 SERVICE_VERSION = "0.1.0"
 SERVICE_PORT    = int(os.getenv("SERVICE_PORT", "8104"))
