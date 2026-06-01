@@ -4,16 +4,23 @@
 alarm_id format, nested field resolution, and validation.
 """
 
+import importlib.util
 import re
 import sys
 from pathlib import Path
 
 import pytest
 
-# Engine lives at edge/fusion_engine/engine.py — add it to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "edge" / "fusion_engine"))
-
-from engine import FusionEngine, RuleEngine
+# Load from exact path so pytest can run all unit tests together without
+# module-name collision against edge/alarm_engine/engine.py
+_ENGINE_PATH = (
+    Path(__file__).parent.parent.parent / "edge" / "fusion_engine" / "engine.py"
+)
+_spec = importlib.util.spec_from_file_location("fusion_engine_module", _ENGINE_PATH)
+_mod  = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+FusionEngine = _mod.FusionEngine
+RuleEngine   = _mod.RuleEngine
 
 RULES_PATH = str(
     Path(__file__).parent.parent.parent

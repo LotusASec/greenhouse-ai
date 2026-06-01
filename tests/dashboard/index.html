@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Greenhouse AI — Phase 3 Dashboard</title>
+<title>Greenhouse AI — Phase 4 Dashboard</title>
 <style>
 /* ── Reset & Variables ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,7 +108,7 @@ body {
 /* ── Health Grid ────────────────────────────────────────────── */
 .health-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 10px;
 }
 
@@ -374,10 +374,10 @@ tr:hover td { background: rgba(255,255,255,.02); }
 <body>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
-<div class="page-title">🌿 Greenhouse AI — Phase 3 Verification Dashboard</div>
+<div class="page-title">🌿 Greenhouse AI — Phase 4 Verification Dashboard</div>
 <div class="page-sub">
-  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp; monitor :8105 &nbsp;·&nbsp; <strong style="color:var(--cyan)">fusion :8106</strong> &nbsp;·&nbsp;
-  Payloads match MASTER_SPEC §3.2–§3.8 · Rules from rules.yaml only
+  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp; monitor :8105 &nbsp;·&nbsp; fusion :8106 &nbsp;·&nbsp; <strong style="color:var(--cyan)">alarm :8107</strong> &nbsp;·&nbsp;
+  Payloads match MASTER_SPEC §3.2–§3.8 · Rules from rules.yaml only · Cooldown from env
 </div>
 
 <!-- ── Health Panel ───────────────────────────────────────── -->
@@ -608,6 +608,86 @@ tr:hover td { background: rgba(255,255,255,.02); }
   </div>
 </div>
 
+<!-- ── Alarm Engine Section ───────────────────────────────── -->
+<div class="card" style="margin-bottom:14px">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">🔔 Alarm Engine — MASTER_SPEC §3.7 · Phase 4</div>
+    <span style="font-size:11px; color:var(--muted)">port 8107</span>
+  </div>
+  <div style="display:grid; grid-template-columns:320px 1fr 1fr; gap:16px">
+
+    <!-- Left: Cooldown test -->
+    <div>
+      <div class="section-title">Cooldown Indicator</div>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:10px">
+        Posts the same alarm twice. The second should be suppressed within 60s cooldown.
+      </div>
+      <button class="btn btn-primary" id="cooldownBtn" onclick="testCooldown()"
+        style="width:100%; background:var(--red); border-color:var(--red)">
+        🔔 Test Cooldown
+      </button>
+      <div id="cooldownResult" style="margin-top:10px">
+        <div style="text-align:center; color:var(--muted); padding:16px 0; font-size:12px">
+          Click to test duplicate suppression.
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Alarm History -->
+    <div>
+      <div class="card-header" style="margin-bottom:6px">
+        <div class="section-title" style="margin:0">Alarm History</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap">
+          <button class="btn" style="font-size:10px; padding:3px 7px" onclick="loadAlarms()">↻</button>
+          <button class="btn" style="font-size:10px; padding:3px 7px" id="filterAll" onclick="setFilter('all')"
+            >ALL</button>
+          <button class="btn" style="font-size:10px; padding:3px 7px; color:var(--red)"
+            id="filterCrit" onclick="setFilter('CRITICAL')">CRIT</button>
+          <button class="btn" style="font-size:10px; padding:3px 7px; color:#f97316"
+            id="filterHigh" onclick="setFilter('HIGH')">HIGH</button>
+          <button class="btn" style="font-size:10px; padding:3px 7px; color:var(--yellow)"
+            id="filterWarn" onclick="setFilter('WARNING')">WARN</button>
+          <button class="btn" style="font-size:10px; padding:3px 7px; color:var(--muted)"
+            id="filterInfo" onclick="setFilter('INFO')">INFO</button>
+        </div>
+      </div>
+      <!-- Summary badges -->
+      <div id="alarmSummaryBadges" style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap"></div>
+      <!-- Table -->
+      <div style="overflow-x:auto; max-height:240px; overflow-y:auto">
+        <table id="alarmTable">
+          <thead>
+            <tr>
+              <th>Time</th><th>Level</th><th>Source</th><th>Rule ID</th><th>Alarm ID</th>
+            </tr>
+          </thead>
+          <tbody id="alarmTableBody">
+            <tr><td colspan="5" class="placeholder-cell">Click ↻ to load alarms.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right: Sync Status -->
+    <div>
+      <div class="card-header" style="margin-bottom:8px">
+        <div class="section-title" style="margin:0">Sync Status</div>
+        <button class="btn" style="font-size:10px; padding:3px 7px" onclick="refreshSyncStatus()">↻</button>
+      </div>
+      <div id="syncStatus">
+        <div style="text-align:center; color:var(--muted); padding:16px 0; font-size:12px">
+          Click ↻ to check unsynced count.
+        </div>
+      </div>
+      <button class="btn btn-primary" id="syncAllBtn" onclick="syncAllAlarms()"
+        style="margin-top:10px; width:100%; font-size:12px; padding:7px 12px">
+        ✔ Mark All Synced
+      </button>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── Request Log ────────────────────────────────────────── -->
 <div class="card">
   <div class="card-header">
@@ -644,6 +724,7 @@ const SERVICES = [
   { key: 'anomaly',    label: 'Anomaly',    port: 8104, icon: '🔍', color: '#a855f7' },
   { key: 'monitor',    label: 'Monitor',    port: 8105, icon: '📊', color: '#06b6d4' },
   { key: 'fusion',     label: 'Fusion',     port: 8106, icon: '⚡', color: '#f59e0b' },
+  { key: 'alarm',      label: 'Alarm',      port: 8107, icon: '🔔', color: '#ef4444' },
 ];
 
 const SENSORS = [
@@ -1546,6 +1627,168 @@ async function loadFusionRules() {
     document.getElementById('fusionRulesInfo').innerHTML =
       `<span style="color:var(--red)">✗ ${esc(e.message)}</span>`;
   }
+}
+
+// ─── Alarm Engine ─────────────────────────────────────────────
+const ALARM_URL = 'http://localhost:8107';
+let alarmFilter = 'all';
+
+function makeTestAlarm(alarmId, ruleId) {
+  return {
+    alarm_id: alarmId || `ALM_${new Date().toISOString().slice(0,10).replace(/-/g,'')}_DASH01`,
+    node_id:  'greenhouse_01',
+    timestamp: new Date().toISOString(),
+    level:    'WARNING',
+    source:   'rule_engine',
+    rule_id:  ruleId || 'RULE_DASH_001',
+    trigger_values: { 'sensor_reading.sensors.soil_moisture': 25.0 },
+    llm_explanation: null,
+    synced: false,
+  };
+}
+
+async function testCooldown() {
+  const btn = document.getElementById('cooldownBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Testing…';
+
+  const ruleId = `RULE_CD_${Date.now().toString(36).toUpperCase()}`;
+  const alarm1 = makeTestAlarm(`ALM_${Date.now()}_A`, ruleId);
+  const alarm2 = makeTestAlarm(`ALM_${Date.now()}_B`, ruleId);
+
+  let html = '';
+  try {
+    const r1 = await fetch(`${ALARM_URL}/alarm`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(alarm1), signal: AbortSignal.timeout(5000),
+    });
+    const d1 = await r1.json();
+    pushLog('Alarm /alarm (1st)', r1.status, 0, `stored:${d1.stored} suppressed:${d1.suppressed}`);
+
+    const r2 = await fetch(`${ALARM_URL}/alarm`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(alarm2), signal: AbortSignal.timeout(5000),
+    });
+    const d2 = await r2.json();
+    pushLog('Alarm /alarm (2nd)', r2.status, 0, `stored:${d2.stored} suppressed:${d2.suppressed}`);
+
+    const b1 = d1.stored  ? '<span class="badge badge-green">stored</span>'  : '<span class="badge badge-red">not stored</span>';
+    const b2 = d2.suppressed ? '<span class="badge badge-yellow">suppressed ✓</span>' : '<span class="badge badge-red">NOT suppressed</span>';
+
+    html = `
+      <div class="result-card" style="border-color:rgba(239,68,68,.25)">
+        <div style="font-size:11px; color:var(--muted); margin-bottom:8px">Rule: <code>${esc(ruleId)}</code></div>
+        <div class="kv-row" style="margin-bottom:6px"><span class="kv-key">1st alarm</span>${b1}</div>
+        <div class="kv-row"><span class="kv-key">2nd alarm</span>${b2}</div>
+        ${d2.suppressed
+          ? '<div style="margin-top:8px; font-size:11px; color:var(--green)">✓ Cooldown is working correctly</div>'
+          : '<div style="margin-top:8px; font-size:11px; color:var(--red)">✗ Expected suppression did not occur</div>'}
+      </div>`;
+  } catch(e) {
+    html = `<div class="err-box">Error: ${esc(e.message)}<div class="err-hint">Is alarm service running on port 8107?</div></div>`;
+  }
+
+  document.getElementById('cooldownResult').innerHTML = html;
+  btn.disabled = false;
+  btn.innerHTML = '🔔 Test Cooldown';
+  loadAlarms();
+}
+
+function setFilter(level) {
+  alarmFilter = level;
+  loadAlarms();
+}
+
+async function loadAlarms() {
+  const params = alarmFilter !== 'all' ? `?level=${alarmFilter}&limit=20` : '?limit=20';
+  try {
+    const [alarmsRes, summaryRes] = await Promise.all([
+      fetch(`${ALARM_URL}/alerts${params}`, { signal: AbortSignal.timeout(4000) }),
+      fetch(`${ALARM_URL}/alerts/summary`,  { signal: AbortSignal.timeout(4000) }),
+    ]);
+    const alarms  = await alarmsRes.json();
+    const summary = await summaryRes.json();
+    pushLog('Alarm /alerts', alarmsRes.status, 0, `total:${summary.total} unsynced:${summary.unsynced}`);
+
+    // Summary badges
+    const lvl = summary.by_level || {};
+    const badgeMap = {
+      CRITICAL: 'badge-critical', HIGH: 'badge-high', WARNING: 'badge-warning', INFO: 'badge-info'
+    };
+    document.getElementById('alarmSummaryBadges').innerHTML =
+      Object.entries(lvl).filter(([,n]) => n > 0).map(([level, n]) =>
+        `<span class="badge ${badgeMap[level] || 'badge-yellow'}">${esc(level)}: ${n}</span>`
+      ).join('') +
+      (summary.unsynced > 0
+        ? `<span class="badge badge-blue">unsynced: ${summary.unsynced}</span>` : '');
+
+    // Table
+    if (!alarms.length) {
+      document.getElementById('alarmTableBody').innerHTML =
+        `<tr><td colspan="5" class="placeholder-cell">No alarms${alarmFilter !== 'all' ? ' matching filter' : ''}.</td></tr>`;
+      return;
+    }
+
+    const levelColors = { INFO:'var(--muted)', WARNING:'var(--yellow)', HIGH:'#f97316', CRITICAL:'var(--red)' };
+    document.getElementById('alarmTableBody').innerHTML = alarms.map(a => {
+      const lc = levelColors[a.level] || 'var(--text)';
+      const ts = a.timestamp ? a.timestamp.slice(0,19).replace('T',' ') : '—';
+      return `<tr>
+        <td style="color:var(--muted); white-space:nowrap">${esc(ts)}</td>
+        <td style="font-weight:700; color:${lc}">${esc(a.level)}</td>
+        <td style="color:var(--cyan)">${esc(a.source)}</td>
+        <td style="color:var(--blue)">${esc(a.rule_id || '—')}</td>
+        <td style="font-size:10px; color:var(--muted); font-family:var(--font-mono)">${esc(a.alarm_id)}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('alarmTableBody').innerHTML =
+      `<tr><td colspan="5" class="placeholder-cell" style="color:var(--red)">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+async function refreshSyncStatus() {
+  try {
+    const r = await fetch(`${ALARM_URL}/alerts/unsynced`, { signal: AbortSignal.timeout(4000) });
+    const data = await r.json();
+    const count = data.count || 0;
+    pushLog('Alarm /alerts/unsynced', r.status, 0, `unsynced:${count}`);
+
+    const color = count > 0 ? 'var(--yellow)' : 'var(--green)';
+    document.getElementById('syncStatus').innerHTML = `
+      <div class="result-card" style="padding:10px 12px">
+        <div class="kv-row">
+          <span class="kv-key">Unsynced alarms</span>
+          <span class="kv-val" style="color:${color}; font-size:20px">${count}</span>
+        </div>
+        ${count === 0
+          ? '<div style="margin-top:6px; font-size:11px; color:var(--green)">✓ All alarms synced</div>'
+          : `<div style="margin-top:6px; font-size:11px; color:var(--yellow)">⚠ ${count} alarm(s) pending sync</div>`}
+      </div>`;
+  } catch(e) {
+    document.getElementById('syncStatus').innerHTML =
+      `<div class="err-box" style="font-size:11px">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function syncAllAlarms() {
+  const btn = document.getElementById('syncAllBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Syncing…';
+  try {
+    const r = await fetch(`${ALARM_URL}/alerts/sync-all`, {
+      method: 'POST', signal: AbortSignal.timeout(5000),
+    });
+    const data = await r.json();
+    pushLog('Alarm /alerts/sync-all', r.status, 0, `count:${data.count}`);
+    await refreshSyncStatus();
+    await loadAlarms();
+  } catch(e) {
+    document.getElementById('syncStatus').innerHTML =
+      `<div class="err-box" style="font-size:11px">Sync failed: ${esc(e.message)}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '✔ Mark All Synced';
 }
 
 // ─── Boot ─────────────────────────────────────────────────────
