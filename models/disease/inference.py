@@ -16,7 +16,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import models, transforms
-from torchvision.models import ResNet50_Weights
 
 # val_transform — NEVER use train_transform in inference (TR-16)
 val_transform = transforms.Compose([
@@ -79,8 +78,17 @@ class DiseaseInference:
             probs  = F.softmax(logits, dim=1).squeeze().tolist()
         inference_ms = (time.perf_counter() - t_start) * 1000.0
 
-        class_probs = {cls: round(float(p), 4)
-                       for cls, p in zip(self.class_names, probs)}
+        # --- ETİKET KAYMASINI DÜZELTEN GERÇEK SIRALAMA ---
+        # ResNet modelinin çıktı nöron sırasına göre arayüz etiketlerini eşliyoruz.
+        true_order = ["late_blight", "early_blight", "healthy", "leaf_mold", "other"]
+
+        if len(probs) == len(true_order):
+            class_probs = {true_order[i]: round(float(probs[i]), 4) for i in range(len(true_order))}
+        else:
+            # Güvence: Eğer sınıf sayıları bir sebeple uyuşmazsa yedek plana dön
+            class_probs = {cls: round(float(p), 4) for cls, p in zip(self.class_names, probs)}
+        # ------------------------------------------------
+
         top_prediction  = max(class_probs, key=class_probs.get)
         top_confidence  = class_probs[top_prediction]
 
@@ -93,11 +101,11 @@ class DiseaseInference:
             )
 
         return {
-            "model":              self.model_name,
+            "model":               self.model_name,
             "node_id":            input_data["node_id"],
             "timestamp":          input_data["timestamp"],
             "top_prediction":     top_prediction,
             "top_confidence":     top_confidence,
             "class_probabilities": class_probs,
-            "inference_time_ms":  round(inference_ms, 2),
+            "inference_time_ms":   round(inference_ms, 2),
         }

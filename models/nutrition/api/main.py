@@ -44,11 +44,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=SERVICE_NAME, version=SERVICE_VERSION, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_origins=["*"],  # Her yerden gelen tarayıcı isteklerine tam izin verdik
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
 
 # ---------------------------------------------------------------------------
 # Schemas — MASTER_SPEC §3.4 (frozen)

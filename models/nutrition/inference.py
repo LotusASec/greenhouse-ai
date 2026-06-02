@@ -53,20 +53,42 @@ class NutritionInference:
         sensors = input_data["sensors"]
         X = np.array([[sensors[k] for k in self._feature_keys]])
 
-        deficiency_class = str(self._clf.predict(X)[0])
-        proba            = self._clf.predict_proba(X)[0]
-        class_idx        = list(self._clf.classes_).index(deficiency_class)
-        confidence       = float(proba[class_idx])
-        recommendation   = FERTILIZER_RECOMMENDATIONS.get(
+        # 1. Ham tahmini sayısal (int) olarak al
+        raw_pred = self._clf.predict(X)[0]  # Örn: 1 (int)
+        proba    = self._clf.predict_proba(X)[0]
+
+        # 2. Olasılık indexini sayısal değer üzerinden güvenle bul
+        class_idx = list(self._clf.classes_).index(raw_pred)
+        confidence = float(proba[class_idx])
+
+        # 3. Sayısal sınıfı MASTER_SPEC §3.4 şemasına uygun string etiketine çevir
+        class_mapping = {
+            0: "N_deficiency",
+            1: "P_deficiency",
+            2: "K_deficiency",
+            3: "normal"
+        }
+        
+        # Eğer modelden gelen değer int veya string sayı ise maple, yoksa olduğu gibi bırak
+        try:
+            deficiency_class = class_mapping[int(raw_pred)]
+        except (ValueError, KeyError):
+            deficiency_class = str(raw_pred)
+
+        recommendation = FERTILIZER_RECOMMENDATIONS.get(
             deficiency_class, "Agronomik değerlendirme yapın."
         )
 
+        t_ms = (time.perf_counter() - t_start) * 1000.0
+
         return {
-            "model":                     self.model_name,
-            "node_id":                   input_data["node_id"],
-            "timestamp":                 input_data["timestamp"],
-            "deficiency_class":          deficiency_class,
+            "model": "rf_nutrition",
+            "node_id": input_data.get("node_id", "unknown"),
+            "timestamp": input_data.get("timestamp", ""),
+            "deficiency_class": deficiency_class,
+            "confidence": confidence,
             "fertilizer_recommendation": recommendation,
-            "confidence":                round(confidence, 4),
-            "inference_time_ms":         round((time.perf_counter() - t_start) * 1000, 3),
+            "inference_time_ms": t_ms
         }
+
+        

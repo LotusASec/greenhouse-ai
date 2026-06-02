@@ -5,7 +5,7 @@ Business logic lives in inference.py (DiseaseInference).
 MASTER_SPEC.md Section 3.2 — schema frozen.
 Class names come from checkpoint — never hardcoded.
 """
-
+import numpy as np
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -103,13 +103,37 @@ async def health():
 async def predict(payload: DiseaseInput) -> DiseaseOutput:
     if app.state.inference is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
+        
     result = app.state.inference.predict(payload.model_dump())
+    
+    # --- ETİKET KAYMASINI ÖNLEYEN AKILLI SÖZLÜK EŞLEME ---
+    # Modelden gelen ham çıktıları alıyoruz (örneğin result["class_probabilities"] 
+    # içeride {'healthy': 0.14, 'late_blight': 0.85} şeklinde isimli durmalı)
+    raw_probs = result["class_probabilities"]
+    
+    # Eğer inference.py sadece bir liste [0.85, 0.14, ...] dönüyorsa, 
+    # onu modelin gerçek class_names listesiyle eşleştiriyoruz:
+    if isinstance(raw_probs, (list, np.ndarray)):
+        model_classes = app.state.inference.class_names
+        raw_probs = {model_classes[i]: float(raw_probs[i]) for i in range(len(model_classes))}
+    
+    # Pydantic ClassProbabilities şemasına, isimleri tam olarak doğru anahtarlara denk gelecek şekilde paslıyoruz
+    # MASTER_SPEC şemasında eksik kalma ihtimaline karşı .get(..., 0.0) güvencesi ekliyoruz
+    validated_probabilities = ClassProbabilities(
+        healthy      = float(raw_probs.get("healthy", 0.0)),
+        early_blight = float(raw_probs.get("early_blight", 0.0)),
+        late_blight  = float(raw_probs.get("late_blight", 0.0)),
+        leaf_mold    = float(raw_probs.get("leaf_mold", 0.0)),
+        other        = float(raw_probs.get("other", 0.0))
+    )
+    # ---------------------------------------------------------------------------
+
     return DiseaseOutput(
-        model             = result["model"],
-        node_id           = result["node_id"],
-        timestamp         = result["timestamp"],
-        top_prediction    = result["top_prediction"],
-        top_confidence    = result["top_confidence"],
-        class_probabilities = ClassProbabilities(**result["class_probabilities"]),
-        inference_time_ms = result["inference_time_ms"],
+        model               = result["model"],
+        node_id             = result["node_id"],
+        timestamp           = result["timestamp"],
+        top_prediction      = result["top_prediction"],
+        top_confidence      = result["top_confidence"],
+        class_probabilities = validated_probabilities,
+        inference_time_ms   = result["inference_time_ms"],
     )

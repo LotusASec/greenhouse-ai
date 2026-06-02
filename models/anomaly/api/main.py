@@ -14,7 +14,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Eğer api klasörünün bir üst dizinindeyse (models/anomaly/inference.py ise)
-from ..inference import AnomalyInference
+import sys
+import os
+
+# Kodun çalıştığı klasörün üst dizinini Python arama yollarına ekliyoruz.
+# Böylece Docker içinde de olsak, localde de olsak importlar asla patlamayacak.
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+# Şimdi doğrudan ismiyle çağırabiliriz, Python yolu hafızasından bulacaktır
+from inference import AnomalyInference
+# ya da eğer inference doğrudan üst klasördeyse sys.path eklemesi yapabiliriz:
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from inference import AnomalyInference
 SERVICE_NAME    = "edge_anomaly"
 SERVICE_VERSION = "0.1.0"
 SERVICE_PORT    = int(os.getenv("SERVICE_PORT", "8104"))
