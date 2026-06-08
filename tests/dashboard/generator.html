@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greenhouse AI — Veri Üretici</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+    header { background: #1a1f2e; border-bottom: 1px solid #2d3748; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #68d391; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; box-shadow: 0 0 6px #48bb78; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .header-stats { margin-left: auto; display: flex; gap: 20px; font-size: .78rem; color: #a0aec0; }
+    .header-stats span { color: #e2e8f0; font-weight: 600; }
+
+    .main { display: grid; grid-template-columns: 340px 1fr; gap: 0; height: calc(100vh - 53px); }
+
+    /* ─── Sol panel ─────────────────────────────────────────────── */
+    .sidebar { background: #1a1f2e; border-right: 1px solid #2d3748; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+    .section-title { font-size: .68rem; font-weight: 700; letter-spacing: .08em; color: #718096; text-transform: uppercase; margin-bottom: 6px; }
+
+    /* Node seçici */
+    .node-select { display: flex; gap: 6px; }
+    .node-btn { flex: 1; padding: 8px; border: 1px solid #4a5568; border-radius: 6px; background: #2d3748; color: #a0aec0; cursor: pointer; font-size: .8rem; transition: all .15s; }
+    .node-btn.active { background: #2b6cb0; border-color: #63b3ed; color: #bee3f8; }
+
+    /* Senaryo butonları */
+    .scenarios { display: flex; flex-direction: column; gap: 6px; }
+    .sc-btn { padding: 10px 12px; border-radius: 7px; border: none; cursor: pointer; font-size: .82rem; font-weight: 600; text-align: left; transition: transform .1s, opacity .15s; display: flex; justify-content: space-between; align-items: center; }
+    .sc-btn:hover { transform: translateX(2px); }
+    .sc-btn:active { transform: scale(.98); }
+    .sc-btn .badge { font-size: .7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: rgba(0,0,0,.3); }
+    .sc-normal   { background: #2b4c3f; color: #68d391; }
+    .sc-fungal   { background: #4a1f1f; color: #fc8181; }
+    .sc-dry      { background: #4a3a1f; color: #f6ad55; }
+    .sc-anomaly  { background: #3d2b5c; color: #d6bcfa; }
+    .sc-drift    { background: #1a3548; color: #63b3ed; }
+
+    /* Özel sensörler */
+    .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sensor-field label { font-size: .7rem; color: #a0aec0; display: block; margin-bottom: 3px; }
+    .sensor-field input[type=range] { width: 100%; accent-color: #63b3ed; }
+    .sensor-field .val { font-size: .78rem; color: #e2e8f0; font-weight: 600; text-align: right; }
+
+    .send-custom { width: 100%; padding: 10px; background: #2b6cb0; border: none; border-radius: 7px; color: white; font-weight: 700; cursor: pointer; font-size: .85rem; margin-top: 4px; transition: background .15s; }
+    .send-custom:hover { background: #3182ce; }
+
+    /* Oto mod */
+    .auto-row { display: flex; gap: 8px; align-items: center; }
+    .auto-toggle { flex: 1; padding: 9px; border-radius: 7px; border: 1px solid #4a5568; background: #2d3748; color: #a0aec0; cursor: pointer; font-size: .82rem; font-weight: 600; transition: all .15s; }
+    .auto-toggle.running { background: #276749; border-color: #68d391; color: #c6f6d5; }
+    .interval-select { padding: 8px; border-radius: 6px; background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0; font-size: .8rem; }
+
+    /* Grafana linkleri */
+    .links { display: flex; flex-direction: column; gap: 5px; }
+    .gf-link { display: block; padding: 7px 10px; background: #2d3748; border-radius: 6px; color: #63b3ed; text-decoration: none; font-size: .78rem; transition: background .15s; }
+    .gf-link:hover { background: #3a4a5c; }
+
+    /* ─── Sağ panel — Feed ──────────────────────────────────────── */
+    .feed-panel { display: flex; flex-direction: column; overflow: hidden; }
+
+    .feed-header { padding: 12px 20px; background: #1a1f2e; border-bottom: 1px solid #2d3748; display: flex; align-items: center; gap: 16px; }
+    .feed-header h2 { font-size: .9rem; font-weight: 600; }
+    .clear-btn { margin-left: auto; padding: 5px 12px; background: #2d3748; border: 1px solid #4a5568; border-radius: 5px; color: #a0aec0; cursor: pointer; font-size: .75rem; }
+    .clear-btn:hover { background: #4a5568; }
+
+    /* İstatistik barı */
+    .stat-bar { display: flex; gap: 1px; padding: 10px 20px; background: #161b27; border-bottom: 1px solid #2d3748; }
+    .stat-chip { flex: 1; text-align: center; padding: 6px; border-radius: 5px; }
+    .stat-chip .num { font-size: 1.2rem; font-weight: 700; line-height: 1; }
+    .stat-chip .lbl { font-size: .65rem; color: #718096; margin-top: 2px; }
+    .chip-info     { background: #1a2d4a; }  .chip-info .num     { color: #63b3ed; }
+    .chip-warning  { background: #3d2e0f; }  .chip-warning .num  { color: #f6ad55; }
+    .chip-high     { background: #2d1f45; }  .chip-high .num     { color: #d6bcfa; }
+    .chip-critical { background: #3b1515; }  .chip-critical .num { color: #fc8181; }
+    .chip-total    { background: #1a2030; }  .chip-total .num    { color: #a0aec0; }
+    .chip-latency  { background: #1a2030; }  .chip-latency .num  { color: #68d391; }
+
+    /* Feed tablosu */
+    .feed-table-wrap { flex: 1; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th { position: sticky; top: 0; background: #1e2535; padding: 8px 12px; text-align: left; font-size: .68rem; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid #2d3748; z-index: 1; }
+    td { padding: 7px 12px; border-bottom: 1px solid #1e2535; vertical-align: middle; }
+    tr:hover td { background: #1e2535; }
+    tr.new-row td { animation: flashRow .6s ease; }
+    @keyframes flashRow { 0%{background:#2d4a6e} 100%{background:transparent} }
+
+    .level-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: .72rem; }
+    .lvl-INFO     { background: #1a3a5c; color: #63b3ed; }
+    .lvl-WARNING  { background: #3d2e0f; color: #f6ad55; }
+    .lvl-HIGH     { background: #2d1f45; color: #d6bcfa; }
+    .lvl-CRITICAL { background: #3b1515; color: #fc8181; }
+    .lvl-ERROR    { background: #3b2215; color: #fb8c00; }
+
+    .rule-id { font-size: .7rem; color: #718096; }
+    .ts { color: #4a5568; font-size: .72rem; }
+    .sensor-preview { color: #a0aec0; font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .ms { color: #68d391; font-weight: 600; }
+
+    /* Hata satırı */
+    .error-row td { color: #fc8181; }
+
+    /* Boş durum */
+    .empty-state { padding: 60px; text-align: center; color: #4a5568; }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state p { font-size: .85rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="status-dot" id="statusDot"></div>
+  <h1>🌿 Greenhouse AI — Veri Üretici</h1>
+  <div class="header-stats">
+    <span>Node 1</span> <span id="hSent">0</span> gönderildi &nbsp;|&nbsp;
+    Son: <span id="hLast">—</span> &nbsp;|&nbsp;
+    Ort: <span id="hAvg">—</span>ms
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ─── Sidebar ─────────────────────────────────── -->
+  <div class="sidebar">
+
+    <!-- Node seçici -->
+    <div>
+      <div class="section-title">Node</div>
+      <div class="node-select">
+        <button class="node-btn active" onclick="setNode(1,this)">Node 1 :8100</button>
+        <button class="node-btn" onclick="setNode(2,this)">Node 2 :8200</button>
+      </div>
+    </div>
+
+    <!-- Senaryolar -->
+    <div>
+      <div class="section-title">Hazır Senaryolar</div>
+      <div class="scenarios">
+        <button class="sc-btn sc-normal"  onclick="sendScenario('normal')">
+          🌱 Normal Operasyon <span class="badge">INFO</span>
+        </button>
+        <button class="sc-btn sc-fungal"  onclick="sendScenario('fungal')">
+          🍄 Mantar / Kritik Risk <span class="badge">CRITICAL</span>
+        </button>
+        <button class="sc-btn sc-dry"     onclick="sendScenario('dry')">
+          🏜️ Kuru Toprak <span class="badge">WARNING</span>
+        </button>
+        <button class="sc-btn sc-anomaly" onclick="sendScenario('anomaly')">
+          ⚡ Aşırı Anomali <span class="badge">HIGH</span>
+        </button>
+        <button class="sc-btn sc-drift"   onclick="sendScenario('drift')">
+          📉 Model Drift (monitor) <span class="badge">WARNING</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Özel sensörler -->
+    <div>
+      <div class="section-title">Özel Sensör Değerleri</div>
+      <div class="sensor-grid">
+        <div class="sensor-field">
+          <label>🌡 Sıcaklık <span class="val" id="v_temp">24.0</span>°C</label>
+          <input type="range" id="s_temp" min="10" max="55" step="0.5" value="24"
+                 oninput="updateSlider('temp',this.value)">
+        </div>
+        <div class="sensor-field">
+          <label>💧 Nem <span class="val" id="v_hum">65.0</span>%</label>
+          <input type="range" id="s_hum" min="10" max="100" step="1" value="65"
+                 oninput="updateSlider('hum',this.value)">
+        </div>
+        <div class="sensor-field">
+          <label>🌿 Toprak Nem <span class="val" id="v_soil">55.0</span>%</label>
+          <input type="range" id="s_soil" min="5" max="100" step="1" value="55"
+                 oninput="updateSlider('soil',this.value)">
+        </div>
+        <div class="sensor-field">
+          <label>☀️ Işık <span class="val" id="v_light">700</span> lux</label>
+          <input type="range" id="s_light" min="0" max="2000" step="10" value="700"
+                 oninput="updateSlider('light',this.value)">
+        </div>
+        <div class="sensor-field">
+          <label>🧪 EC <span class="val" id="v_ec">2.20</span> mS/cm</label>
+          <input type="range" id="s_ec" min="0.5" max="5.0" step="0.1" value="2.2"
+                 oninput="updateSlider('ec',this.value)">
+        </div>
+        <div class="sensor-field">
+          <label>⚗️ pH <span class="val" id="v_ph">6.3</span></label>
+          <input type="range" id="s_ph" min="4.0" max="9.0" step="0.1" value="6.3"
+                 oninput="updateSlider('ph',this.value)">
+        </div>
+      </div>
+      <button class="send-custom" onclick="sendCustom()">▶ Özel Veri Gönder</button>
+    </div>
+
+    <!-- Oto mod -->
+    <div>
+      <div class="section-title">Otomatik Gönderim</div>
+      <div class="auto-row">
+        <button class="auto-toggle" id="autoBtn" onclick="toggleAuto()">▶ Başlat</button>
+        <select class="interval-select" id="intervalSel">
+          <option value="500">0.5s</option>
+          <option value="1000" selected>1s</option>
+          <option value="2000">2s</option>
+          <option value="5000">5s</option>
+        </select>
+      </div>
+      <div style="margin-top:8px; font-size:.72rem; color:#718096;">
+        Oto mod seçili senaryoyu tekrar tekrar gönderir.
+        <select id="autoScenario" style="margin-top:4px; width:100%; background:#2d3748; border:1px solid #4a5568; border-radius:5px; color:#e2e8f0; padding:5px; font-size:.75rem;">
+          <option value="normal">Normal</option>
+          <option value="fungal">Fungal/Kritik</option>
+          <option value="dry">Kuru</option>
+          <option value="anomaly">Anomali</option>
+          <option value="random">Rastgele (tüm senaryolar)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Grafana linkleri -->
+    <div>
+      <div class="section-title">Grafana</div>
+      <div class="links">
+        <a class="gf-link" href="http://localhost:3001/d/greenhouse-edge-node" target="_blank">
+          📊 Edge Node Dashboard (Node 1)
+        </a>
+        <a class="gf-link" href="http://localhost:3000/d/greenhouse-central" target="_blank">
+          🌍 Central Dashboard
+        </a>
+        <a class="gf-link" href="index.html" target="_blank">
+          🔍 Servis Sağlık Durumu
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ─── Feed ─────────────────────────────────────── -->
+  <div class="feed-panel">
+    <div class="feed-header">
+      <h2>📡 Canlı Alarm Feed</h2>
+      <div style="font-size:.75rem; color:#718096;">
+        Her gönderim sonucu anlık güncellenir
+      </div>
+      <button class="clear-btn" onclick="clearFeed()">Temizle</button>
+    </div>
+
+    <div class="stat-bar">
+      <div class="stat-chip chip-total">
+        <div class="num" id="cTotal">0</div>
+        <div class="lbl">Toplam</div>
+      </div>
+      <div class="stat-chip chip-info">
+        <div class="num" id="cInfo">0</div>
+        <div class="lbl">INFO</div>
+      </div>
+      <div class="stat-chip chip-warning">
+        <div class="num" id="cWarning">0</div>
+        <div class="lbl">WARNING</div>
+      </div>
+      <div class="stat-chip chip-high">
+        <div class="num" id="cHigh">0</div>
+        <div class="lbl">HIGH</div>
+      </div>
+      <div class="stat-chip chip-critical">
+        <div class="num" id="cCritical">0</div>
+        <div class="lbl">CRITICAL</div>
+      </div>
+      <div class="stat-chip chip-latency">
+        <div class="num" id="cAvgMs">—</div>
+        <div class="lbl">Ort ms</div>
+      </div>
+    </div>
+
+    <div class="feed-table-wrap">
+      <div id="emptyState" class="empty-state">
+        <div class="icon">🌱</div>
+        <p>Henüz veri gönderilmedi.<br>Bir senaryo seçin veya özel değer gönderin.</p>
+      </div>
+      <table id="feedTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Zaman</th>
+            <th>Seviye</th>
+            <th>Kaynak / Kural</th>
+            <th>Sensörler</th>
+            <th>Alarm ID</th>
+            <th>ms</th>
+          </tr>
+        </thead>
+        <tbody id="feedBody"></tbody>
+      </table>
+    </div>
+  </div><!-- /feed-panel -->
+
+</div><!-- /main -->
+
+<script>
+// ─── Sabitler ────────────────────────────────────────────────────────────────
+const NODE_URLS = { 1: 'http://localhost:8100', 2: 'http://localhost:8200' };
+const MONITOR_URLS = { 1: 'http://localhost:8105', 2: 'http://localhost:8205' };
+
+const SCENARIOS = {
+  normal:  { temperature:24.0, humidity:65.0, soil_moisture:55.0, light:700.0,  ec:2.2, ph:6.3 },
+  fungal:  { temperature:22.0, humidity:88.0, soil_moisture:70.0, light:400.0,  ec:1.2, ph:7.5 },
+  dry:     { temperature:28.0, humidity:45.0, soil_moisture:22.0, light:800.0,  ec:2.0, ph:6.5 },
+  anomaly: { temperature:48.0, humidity:99.0, soil_moisture:98.0, light:1950.0, ec:4.8, ph:1.2 },
+};
+const SCENARIO_ORDER = ['normal','fungal','dry','anomaly'];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentNode = 1;
+let autoTimer   = null;
+let rowCount    = 0;
+let totalSent   = 0;
+let stats       = { INFO:0, WARNING:0, HIGH:0, CRITICAL:0 };
+let latencies   = [];
+
+// ─── Node seçici ─────────────────────────────────────────────────────────────
+function setNode(n, btn) {
+  currentNode = n;
+  document.querySelectorAll('.node-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelector('header .header-stats span').textContent = `Node ${n}`;
+}
+
+// ─── Slider güncelleme ───────────────────────────────────────────────────────
+const sliderMap = {
+  temp:  ['v_temp',  v => (+v).toFixed(1)],
+  hum:   ['v_hum',   v => (+v).toFixed(1)],
+  soil:  ['v_soil',  v => (+v).toFixed(1)],
+  light: ['v_light', v => (+v).toFixed(0)],
+  ec:    ['v_ec',    v => (+v).toFixed(2)],
+  ph:    ['v_ph',    v => (+v).toFixed(1)],
+};
+function updateSlider(key, val) {
+  const [id, fmt] = sliderMap[key];
+  document.getElementById(id).textContent = fmt(val);
+}
+
+// ─── Özel sensör değerlerini oku ─────────────────────────────────────────────
+function readCustomSensors() {
+  return {
+    temperature:   +document.getElementById('s_temp').value,
+    humidity:      +document.getElementById('s_hum').value,
+    soil_moisture: +document.getElementById('s_soil').value,
+    light:         +document.getElementById('s_light').value,
+    ec:            +document.getElementById('s_ec').value,
+    ph:            +document.getElementById('s_ph').value,
+  };
+}
+
+// ─── Slider'ları senaryo değerlerine ayarla ──────────────────────────────────
+function applyToSliders(sensors) {
+  const map = {
+    temperature:'s_temp', humidity:'s_hum', soil_moisture:'s_soil',
+    light:'s_light', ec:'s_ec', ph:'s_ph'
+  };
+  for (const [field, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    el.value = sensors[field];
+    el.dispatchEvent(new Event('input'));
+  }
+}
+
+// ─── Senaryo gönder ──────────────────────────────────────────────────────────
+async function sendScenario(name) {
+  if (name === 'drift') { await sendDrift(); return; }
+  const sensors = SCENARIOS[name] || readCustomSensors();
+  applyToSliders(sensors);
+  await sendPredict(sensors, name);
+}
+
+async function sendCustom() {
+  await sendPredict(readCustomSensors(), 'custom');
+}
+
+// ─── /predict POST ───────────────────────────────────────────────────────────
+async function sendPredict(sensors, label) {
+  const nodeId  = `greenhouse_0${currentNode}`;
+  const nodeUrl = NODE_URLS[currentNode];
+  const ts      = new Date().toISOString();
+  const t0      = performance.now();
+
+  let result, errorMsg;
+  try {
+    const resp = await fetch(`${nodeUrl}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor_reading: { node_id: nodeId, timestamp: ts, sensors } })
+    });
+    const ms = Math.round(performance.now() - t0);
+    if (!resp.ok) { errorMsg = `HTTP ${resp.status}`; }
+    else {
+      result = await resp.json();
+      result._ms = ms;
+      result._sensors = sensors;
+      result._label = label;
+    }
+  } catch (e) {
+    errorMsg = e.message;
+  }
+
+  if (errorMsg) {
+    appendRow(null, sensors, label, errorMsg);
+  } else {
+    appendRow(result, sensors, label, null);
+    updateStats(result.level, result._ms);
+  }
+  totalSent++;
+  updateHeader(result?._ms);
+}
+
+// ─── Drift: output monitor'e gönder ─────────────────────────────────────────
+async function sendDrift() {
+  const monitorUrl = MONITOR_URLS[currentNode];
+  const nodeId     = `greenhouse_0${currentNode}`;
+  const STABLE_VAL = 0.45;
+  const SPIKE_VAL  = 0.10;
+  const COUNT      = 51; // 50 stable + 1 spike
+
+  appendInfo(`Drift: ${COUNT-1} sabit değer + 1 spike gönderiliyor...`);
+
+  let last;
+  for (let i = 0; i < COUNT; i++) {
+    const val = i < COUNT - 1 ? STABLE_VAL : SPIKE_VAL;
+    try {
+      const r = await fetch(`${monitorUrl}/monitor/disease`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeId, timestamp: new Date().toISOString(), metric_value: val })
+      });
+      last = await r.json();
+    } catch(e) { /* ignore intermediate */ }
+  }
+  if (last) {
+    const level = last.is_anomaly ? 'WARNING' : 'INFO';
+    appendRow({
+      alarm_id: 'MONITOR', node_id: nodeId,
+      timestamp: new Date().toISOString(),
+      level, source: 'model_monitor', rule_id: `z=${last.z_score?.toFixed(2)}`,
+      _ms: 0, _sensors: {}, _label: 'drift'
+    }, {}, 'drift', null);
+    updateStats(level, 0);
+    totalSent++;
+    updateHeader(0);
+  }
+}
+
+// ─── Satır ekle ──────────────────────────────────────────────────────────────
+function appendRow(alarm, sensors, label, error) {
+  const tbody = document.getElementById('feedBody');
+  const table = document.getElementById('feedTable');
+  const empty = document.getElementById('emptyState');
+  table.style.display = '';
+  empty.style.display = 'none';
+
+  rowCount++;
+  const tr = document.createElement('tr');
+  tr.className = 'new-row' + (error ? ' error-row' : '');
+
+  if (error) {
+    tr.innerHTML = `
+      <td>#${rowCount}</td>
+      <td class="ts">${new Date().toLocaleTimeString()}</td>
+      <td><span class="level-badge lvl-ERROR">ERROR</span></td>
+      <td colspan="4" style="color:#fc8181">${error}</td>`;
+  } else {
+    const lvlClass = `lvl-${alarm.level}`;
+    const sensorStr = Object.entries(sensors)
+      .map(([k,v]) => `${k.replace('soil_moisture','soil')}=${+v % 1 === 0 ? v : (+v).toFixed(1)}`).join(' ');
+    tr.innerHTML = `
+      <td style="color:#4a5568">#${rowCount}</td>
+      <td class="ts">${new Date().toLocaleTimeString('tr-TR', {hour12:false})}</td>
+      <td><span class="level-badge ${lvlClass}">${alarm.level}</span></td>
+      <td>
+        <span style="color:#a0aec0;font-size:.75rem">${alarm.source || '—'}</span>
+        ${alarm.rule_id ? `<br><span class="rule-id">${alarm.rule_id}</span>` : ''}
+      </td>
+      <td class="sensor-preview" title="${sensorStr}">${sensorStr}</td>
+      <td style="font-size:.68rem;color:#4a5568;font-family:monospace">${(alarm.alarm_id||'').slice(-8)}</td>
+      <td class="ms">${alarm._ms}ms</td>`;
+  }
+
+  tbody.insertBefore(tr, tbody.firstChild);
+
+  // Max 200 satır tut
+  while (tbody.rows.length > 200) tbody.deleteRow(tbody.rows.length - 1);
+}
+
+function appendInfo(msg) {
+  const tbody = document.getElementById('feedBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td colspan="7" style="color:#718096;font-style:italic;text-align:center;padding:6px">${msg}</td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+}
+
+// ─── İstatistikler ───────────────────────────────────────────────────────────
+function updateStats(level, ms) {
+  if (level in stats) {
+    stats[level]++;
+    document.getElementById('c' + level.charAt(0) + level.slice(1).toLowerCase()).textContent = stats[level];
+  }
+  document.getElementById('cTotal').textContent = Object.values(stats).reduce((a,b)=>a+b,0);
+
+  if (ms > 0) {
+    latencies.push(ms);
+    if (latencies.length > 100) latencies.shift();
+    const avg = Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length);
+    document.getElementById('cAvgMs').textContent = avg;
+    document.getElementById('hAvg').textContent = avg;
+  }
+}
+
+function updateHeader(ms) {
+  document.getElementById('hSent').textContent = totalSent;
+  if (ms != null && ms > 0) document.getElementById('hLast').textContent = `${ms}ms`;
+}
+
+// ─── Temizle ─────────────────────────────────────────────────────────────────
+function clearFeed() {
+  document.getElementById('feedBody').innerHTML = '';
+  document.getElementById('feedTable').style.display = 'none';
+  document.getElementById('emptyState').style.display = '';
+  stats = { INFO:0, WARNING:0, HIGH:0, CRITICAL:0 };
+  latencies = [];
+  rowCount = 0;
+  ['cTotal','cInfo','cWarning','cHigh','cCritical'].forEach(id => document.getElementById(id).textContent='0');
+  document.getElementById('cAvgMs').textContent = '—';
+}
+
+// ─── Oto mod ─────────────────────────────────────────────────────────────────
+let autoScIdx = 0;
+function toggleAuto() {
+  const btn = document.getElementById('autoBtn');
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    btn.textContent = '▶ Başlat';
+    btn.classList.remove('running');
+  } else {
+    const interval = +document.getElementById('intervalSel').value;
+    btn.textContent = '⏹ Durdur';
+    btn.classList.add('running');
+    autoTimer = setInterval(async () => {
+      const sc = document.getElementById('autoScenario').value;
+      if (sc === 'random') {
+        await sendScenario(SCENARIO_ORDER[autoScIdx % SCENARIO_ORDER.length]);
+        autoScIdx++;
+      } else {
+        await sendScenario(sc);
+      }
+    }, interval);
+  }
+}
+
+// ─── Keyboard shortcuts ──────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const map = { '1':'normal', '2':'fungal', '3':'dry', '4':'anomaly', '5':'drift', ' ': '__custom' };
+  const action = map[e.key];
+  if (!action) return;
+  e.preventDefault();
+  if (action === '__custom') sendCustom();
+  else sendScenario(action);
+});
+</script>
+</body>
+</html>

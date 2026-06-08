@@ -172,10 +172,14 @@ services:
       <<: *edge1-env
       SERVICE_PORT: 8100
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SIMULATOR_CONFIG_PATH: /app/simulator/config/node1.yaml
+      DATASET_PATH: ${DATASET_PATH:-}
     ports:
       - "8100:8100"
     volumes:
       - edge1_db:/data
+      - ./simulator:/app/simulator:ro
+      - ./models/disease/config:/app/models/disease/config:ro
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -309,6 +313,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
       - "8105:8105"
+    volumes:
+      - edge1_db:/data
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -373,10 +379,14 @@ services:
       <<: *edge2-env
       SERVICE_PORT: 8100
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SIMULATOR_CONFIG_PATH: /app/simulator/config/node2.yaml
+      DATASET_PATH: ${DATASET_PATH:-}
     ports:
       - "8200:8100"
     volumes:
       - edge2_db:/data
+      - ./simulator:/app/simulator:ro
+      - ./models/disease/config:/app/models/disease/config:ro
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -510,6 +520,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
       - "8205:8105"
+    volumes:
+      - edge2_db:/data
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -573,11 +585,20 @@ services:
     environment:
       SERVICE_PORT: 9000
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CENTRAL_DB_PATH: /data/central.db
+      NODE1_GATEWAY_URL: http://edge1_gateway:8100
+      NODE2_GATEWAY_URL: http://edge2_gateway:8200
+      CENTRAL_SYNC_INTERVAL: ${CENTRAL_SYNC_INTERVAL:-30}
+      AGGREGATOR_SERVICE_URL: http://central_aggregator:9001
+      LSTM_SERVICE_URL: http://central_lstm:9002
+      LLM_SERVICE_URL: http://central_llm:9003
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-200}
     ports:
       - "9000:9000"
+    volumes:
+      - central_db:/data
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -585,7 +606,7 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
       interval: 30s
       timeout: 10s
-      start_period: 5s
+      start_period: 15s
       retries: 3
 
   central_aggregator:
@@ -595,7 +616,10 @@ services:
     environment:
       SERVICE_PORT: 9001
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      DB_PATH: /data/greenhouse.db
+      CENTRAL_DB_PATH: /data/central.db
+      NODE1_GATEWAY_URL: http://edge1_gateway:8100
+      NODE2_GATEWAY_URL: http://edge2_gateway:8200
+      CENTRAL_SYNC_INTERVAL: ${CENTRAL_SYNC_INTERVAL:-30}
     ports:
       - "9001:9001"
     volumes:
@@ -617,8 +641,11 @@ services:
     environment:
       SERVICE_PORT: 9002
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CENTRAL_DB_PATH: /data/central.db
     ports:
       - "9002:9002"
+    volumes:
+      - central_db:/data
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -636,11 +663,14 @@ services:
     environment:
       SERVICE_PORT: 9003
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CENTRAL_DB_PATH: /data/central.db
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-200}
     ports:
       - "9003:9003"
+    volumes:
+      - central_db:/data
     networks:
       - greenhouse_net
     restart: unless-stopped
@@ -652,16 +682,80 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------
-  # MONITORING
+  # MONITORING — 3 Grafana instances (central + 2 edge)
   # ---------------------------------------------------------------
 
   grafana:
-    image: grafana/grafana:10.3.1
+    build:
+      context: ./monitoring
     container_name: grafana
+    user: "0"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: greenhouse
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/central.json
     ports:
       - "3000:3000"
     volumes:
-      - ./monitoring/grafana:/var/lib/grafana
+      - central_db:/data
     networks:
       - greenhouse_net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  edge1_grafana:
+    build:
+      context: ./monitoring
+    container_name: edge1_grafana
+    user: "0"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: greenhouse
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/edge_node.json
+    ports:
+      - "3001:3000"
+    volumes:
+      - edge1_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  edge2_grafana:
+    build:
+      context: ./monitoring
+    container_name: edge2_grafana
+    user: "0"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: greenhouse
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/edge_node.json
+    ports:
+      - "3002:3000"
+    volumes:
+      - edge2_db:/data
+    networks:
+      - greenhouse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3

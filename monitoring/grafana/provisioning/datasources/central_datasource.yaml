@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: CentralDB
+    uid: CentralDB
+    type: frser-sqlite-datasource
+    access: proxy
+    url: /data/central.db
+    isDefault: true
+    editable: true
+    jsonData:
+      path: /data/central.db

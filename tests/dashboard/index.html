@@ -374,20 +374,154 @@ tr:hover td { background: rgba(255,255,255,.02); }
 <body>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
-<div class="page-title">🌿 Greenhouse AI — Phase 4 Verification Dashboard</div>
+<div class="page-title">🌿 Greenhouse AI — Phase 6 Verification Dashboard</div>
 <div class="page-sub">
-  disease :8101 &nbsp;·&nbsp; irrigation :8102 &nbsp;·&nbsp; nutrition :8103 &nbsp;·&nbsp; anomaly :8104 &nbsp;·&nbsp; monitor :8105 &nbsp;·&nbsp; fusion :8106 &nbsp;·&nbsp; <strong style="color:var(--cyan)">alarm :8107</strong> &nbsp;·&nbsp;
-  Payloads match MASTER_SPEC §3.2–§3.8 · Rules from rules.yaml only · Cooldown from env
+  <strong style="color:var(--cyan)">gateway :8100</strong> &nbsp;·&nbsp; … :8101-8107 &nbsp;·&nbsp;
+  <strong style="color:var(--purple)">central :9000</strong> &nbsp;·&nbsp; aggregator :9001 &nbsp;·&nbsp; lstm :9002 &nbsp;·&nbsp; llm :9003 &nbsp;·&nbsp;
+  Full pipeline · Multi-node sync · Yield forecast · LLM explain
 </div>
 
-<!-- ── Health Panel ───────────────────────────────────────── -->
+<!-- ── Unified Health (via Gateway) ─────────────────────── -->
 <div class="card">
   <div class="card-header">
-    <div class="section-title" style="margin:0">Service Health</div>
-    <button class="btn" onclick="checkAllHealth()" id="refreshBtn">↻ Refresh</button>
+    <div class="section-title" style="margin:0">Service Health — via Gateway :8100</div>
+    <button class="btn" onclick="checkGatewayHealth()" id="refreshBtn">↻ Refresh</button>
   </div>
   <div class="health-grid" id="healthGrid"></div>
 </div>
+
+<!-- ── Full Pipeline Test ────────────────────────────────── -->
+<div class="card" style="margin-bottom:14px">
+  <div class="card-header">
+    <div class="section-title" style="margin:0">⚡ Full Pipeline — POST :8100/predict</div>
+    <span style="font-size:11px; color:var(--muted)">4 models → monitor → fusion → alarm</span>
+  </div>
+  <div style="display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start">
+    <div>
+      <div class="section-title">Sensor Values</div>
+      <div id="gw-sliders"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px">
+        <button class="btn" onclick="applyGwPreset(0)" style="flex-direction:column; gap:2px; padding:8px 6px; text-align:center"><span style="font-size:16px">🟢</span>Normal</button>
+        <button class="btn" onclick="applyGwPreset(1)" style="flex-direction:column; gap:2px; padding:8px 6px; text-align:center"><span style="font-size:16px">🍄</span>Fungal</button>
+        <button class="btn" onclick="applyGwPreset(2)" style="flex-direction:column; gap:2px; padding:8px 6px; text-align:center"><span style="font-size:16px">🌵</span>Dry</button>
+        <button class="btn" onclick="applyGwPreset(3)" style="flex-direction:column; gap:2px; padding:8px 6px; text-align:center"><span style="font-size:16px">🚨</span>Anomaly</button>
+      </div>
+      <button class="btn btn-primary" onclick="runFullPipeline()" id="gwRunBtn" style="margin-top:12px; background:var(--cyan); border-color:var(--cyan)">
+        ▶ Run Full Pipeline
+      </button>
+    </div>
+    <div>
+      <div class="section-title">Pipeline Result</div>
+      <div id="gwPipelineResult">
+        <div style="text-align:center; color:var(--muted); padding:28px 0; font-size:12px">
+          Set sensor values and click Run Full Pipeline.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Live Feed + Alerts ────────────────────────────────── -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px">
+
+  <!-- Live Feed -->
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header">
+      <div class="section-title" style="margin:0">📡 Live Feed — GET :8100/logs</div>
+      <div style="display:flex; gap:6px">
+        <button class="btn" id="feedStartBtn" onclick="startLiveFeed()" style="font-size:11px; padding:4px 10px; color:var(--green)">▶ Start</button>
+        <button class="btn" id="feedStopBtn"  onclick="stopLiveFeed()"  style="font-size:11px; padding:4px 10px" disabled>■ Stop</button>
+      </div>
+    </div>
+    <div id="liveFeedPanel" style="font-size:11px; color:var(--muted); text-align:center; padding:16px 0">
+      Click Start to stream sensor readings.
+    </div>
+  </div>
+
+  <!-- Alerts Panel -->
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header">
+      <div class="section-title" style="margin:0">🔔 Alerts — GET :8100/alerts</div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap">
+        <button class="btn" style="font-size:10px; padding:3px 7px" onclick="gwSetFilter('all')">ALL</button>
+        <button class="btn" style="font-size:10px; padding:3px 7px; color:var(--red)"    onclick="gwSetFilter('CRITICAL')">CRIT</button>
+        <button class="btn" style="font-size:10px; padding:3px 7px; color:#f97316"       onclick="gwSetFilter('HIGH')">HIGH</button>
+        <button class="btn" style="font-size:10px; padding:3px 7px; color:var(--yellow)" onclick="gwSetFilter('WARNING')">WARN</button>
+        <button class="btn" style="font-size:10px; padding:3px 7px; color:var(--muted)"  onclick="gwSetFilter('INFO')">INFO</button>
+        <button class="btn" style="font-size:10px; padding:3px 7px" onclick="loadGwAlerts()">↻</button>
+      </div>
+    </div>
+    <div id="gwSummaryBadges" style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap"></div>
+    <div style="overflow-x:auto; max-height:220px; overflow-y:auto">
+      <table><thead><tr><th>Time</th><th>Level</th><th>Source</th><th>Rule</th></tr></thead>
+      <tbody id="gwAlertsBody"><tr><td colspan="4" class="placeholder-cell">Click ↻ to load.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Central Layer Section ──────────────────────────────── -->
+<div class="card" style="margin-bottom:14px; border-color:rgba(168,85,247,.3)">
+  <div class="card-header">
+    <div class="section-title" style="margin:0; color:var(--purple)">🏛 Central Layer — port 9000</div>
+    <button class="btn" onclick="loadCentralAll()" style="font-size:11px; padding:4px 10px">↻ Refresh All</button>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px">
+
+    <!-- Node Overview -->
+    <div>
+      <div class="section-title">Node Overview</div>
+      <div id="centralNodes">
+        <div style="color:var(--muted); font-size:12px; text-align:center; padding:12px">Click ↻ Refresh.</div>
+      </div>
+    </div>
+
+    <!-- Aggregated Alerts -->
+    <div>
+      <div class="card-header" style="margin-bottom:6px">
+        <div class="section-title" style="margin:0">Combined Alerts</div>
+        <div style="display:flex; gap:4px">
+          <button class="btn" style="font-size:10px; padding:2px 6px" onclick="setCentralFilter('all')">ALL</button>
+          <button class="btn" style="font-size:10px; padding:2px 6px; color:var(--red)"    onclick="setCentralFilter('CRITICAL')">CRIT</button>
+          <button class="btn" style="font-size:10px; padding:2px 6px; color:var(--yellow)" onclick="setCentralFilter('WARNING')">WARN</button>
+        </div>
+      </div>
+      <div style="overflow-y:auto; max-height:180px">
+        <table><thead><tr><th>Node</th><th>Level</th><th>Rule</th></tr></thead>
+        <tbody id="centralAlertsBody"><tr><td colspan="3" class="placeholder-cell">No data.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Yield Forecast -->
+    <div>
+      <div class="section-title">Yield Forecast</div>
+      <div id="centralYield">
+        <div style="color:var(--muted); font-size:12px; text-align:center; padding:12px">Click ↻ Refresh.</div>
+      </div>
+    </div>
+
+    <!-- LLM Explain -->
+    <div>
+      <div class="section-title">LLM Explain</div>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:8px">Test template fallback with a sample alarm:</div>
+      <button class="btn btn-primary" onclick="runExplain()"
+        style="width:100%; font-size:12px; padding:7px; background:var(--purple); border-color:var(--purple)">
+        💬 Explain CRITICAL Alarm
+      </button>
+      <div id="explainResult" style="margin-top:8px"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Debug — Individual Services (collapsed) ───────────── -->
+<details style="margin-bottom:14px">
+  <summary style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); font-weight:600">
+    <span class="caret">▶</span> 🔧 Debug — Individual Service Tests (Phase 2–4)
+  </summary>
+  <div style="border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; padding:14px; background:var(--surface)">
 
 <!-- ── Main Grid ──────────────────────────────────────────── -->
 <div class="main-grid">
@@ -687,6 +821,9 @@ tr:hover td { background: rgba(255,255,255,.02); }
 
   </div>
 </div>
+
+  </div><!-- end debug inner -->
+</details><!-- end debug collapsible -->
 
 <!-- ── Request Log ────────────────────────────────────────── -->
 <div class="card">
@@ -1789,6 +1926,418 @@ async function syncAllAlarms() {
   }
   btn.disabled = false;
   btn.innerHTML = '✔ Mark All Synced';
+}
+
+// ─── Central Layer (Phase 6) ──────────────────────────────────
+const CENTRAL = 'http://localhost:9000';
+let _centralAlertFilter = 'all';
+
+async function loadCentralAll() {
+  await Promise.allSettled([loadCentralNodes(), loadCentralAlerts(), loadCentralYield()]);
+}
+
+async function loadCentralNodes() {
+  try {
+    const r = await fetch(`${CENTRAL}/nodes`, { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    const nodes = d.nodes || (Array.isArray(d) ? d : []);
+    if (!nodes.length) {
+      document.getElementById('centralNodes').innerHTML =
+        '<div style="color:var(--muted); font-size:12px">No nodes registered.</div>';
+      return;
+    }
+    document.getElementById('centralNodes').innerHTML = nodes.map(n => {
+      const sc = n.status === 'ok' ? 'var(--green)' : (n.status === 'unreachable' ? 'var(--red)' : 'var(--yellow)');
+      const sync = n.last_sync ? n.last_sync.slice(0,19).replace('T',' ') : 'never';
+      return `<div class="result-card" style="padding:8px 10px; margin-bottom:6px">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+          <span style="font-weight:700; font-size:12px">${esc(n.node_id)}</span>
+          <span style="font-size:11px; color:${sc}">${esc(n.status)}</span>
+        </div>
+        <div style="font-size:10px; color:var(--muted)">Last sync: ${esc(sync)}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('centralNodes').innerHTML =
+      `<div class="err-box" style="font-size:11px">${esc(e.message)}</div>`;
+  }
+}
+
+function setCentralFilter(f) { _centralAlertFilter = f; loadCentralAlerts(); }
+
+async function loadCentralAlerts() {
+  const p = _centralAlertFilter !== 'all' ? `?level=${_centralAlertFilter}&limit=20` : '?limit=20';
+  try {
+    const r = await fetch(`${CENTRAL}/alerts${p}`, { signal: AbortSignal.timeout(4000) });
+    const data = await r.json();
+    const items = Array.isArray(data) ? data : (data.items || data);
+    if (!Array.isArray(items) || !items.length) {
+      document.getElementById('centralAlertsBody').innerHTML =
+        '<tr><td colspan="3" class="placeholder-cell">No alarms synced yet.</td></tr>';
+      return;
+    }
+    const lc = { INFO:'var(--muted)', WARNING:'var(--yellow)', HIGH:'#f97316', CRITICAL:'var(--red)' };
+    document.getElementById('centralAlertsBody').innerHTML = items.slice(0,10).map(a => `<tr>
+      <td style="font-size:10px; color:var(--cyan)">${esc(a.node_id||'?')}</td>
+      <td style="font-weight:700; color:${lc[a.level]||'var(--text)'}; font-size:11px">${esc(a.level)}</td>
+      <td style="font-size:10px; color:var(--blue)">${esc(a.rule_id||a.source||'—')}</td>
+    </tr>`).join('');
+  } catch(e) {
+    document.getElementById('centralAlertsBody').innerHTML =
+      `<tr><td colspan="3" class="placeholder-cell" style="color:var(--red)">${esc(e.message)}</td></tr>`;
+  }
+}
+
+async function loadCentralYield() {
+  try {
+    const r = await fetch(`${CENTRAL}/yield`, { signal: AbortSignal.timeout(5000) });
+    const d = await r.json();
+    const forecasts = d.forecasts || d;
+    const html = Object.entries(forecasts).map(([nid, f]) => {
+      if (f.status === 'insufficient_data') {
+        return `<div class="result-card" style="padding:8px 10px; margin-bottom:6px">
+          <div style="font-weight:700; font-size:11px; margin-bottom:3px">${esc(nid)}</div>
+          <div style="font-size:10px; color:var(--yellow)">⚠ Insufficient data (${f.days_available}/${f.min_days_required} days)</div>
+        </div>`;
+      }
+      if (f.status === 'model_not_trained') {
+        return `<div class="result-card" style="padding:8px 10px; margin-bottom:6px">
+          <div style="font-weight:700; font-size:11px">${esc(nid)}</div>
+          <div style="font-size:10px; color:var(--muted)">Model not trained yet</div>
+        </div>`;
+      }
+      const pct = ((f.yield_score || 0) * 100).toFixed(0);
+      const col = f.yield_score > 0.7 ? 'var(--green)' : (f.yield_score > 0.4 ? 'var(--yellow)' : 'var(--red)');
+      return `<div class="result-card" style="padding:8px 10px; margin-bottom:6px">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+          <span style="font-weight:700; font-size:11px">${esc(nid)}</span>
+          <span style="font-size:13px; font-weight:700; color:${col}">${pct}%</span>
+        </div>
+        <div style="height:4px; background:var(--border); border-radius:2px">
+          <div style="height:100%; width:${pct}%; background:${col}; border-radius:2px"></div>
+        </div>
+        <div style="font-size:10px; color:var(--muted); margin-top:3px">confidence: ${esc(f.confidence||'?')} · date: ${esc(f.forecast_date||'?')}</div>
+      </div>`;
+    }).join('') || '<div style="color:var(--muted); font-size:12px">No forecast data.</div>';
+    document.getElementById('centralYield').innerHTML = html;
+  } catch(e) {
+    document.getElementById('centralYield').innerHTML =
+      `<div class="err-box" style="font-size:11px">${esc(e.message)}</div>`;
+  }
+}
+
+async function runExplain() {
+  const btn = document.querySelector('#explainResult').previousElementSibling;
+  if (btn) btn.disabled = true;
+  document.getElementById('explainResult').innerHTML =
+    '<div style="text-align:center; padding:8px"><span class="spinner"></span></div>';
+
+  const testAlarm = {
+    alarm_id: `ALM_DASH_${Date.now().toString(36).toUpperCase()}`,
+    node_id: 'greenhouse_01', timestamp: new Date().toISOString(),
+    level: 'CRITICAL', source: 'rule_engine', rule_id: 'RULE_001',
+    trigger_values: { 'sensor_reading.sensors.humidity': 88.0, disease_confidence: 0.91 },
+    llm_explanation: null, synced: false,
+  };
+
+  try {
+    const r = await fetch(`${CENTRAL}/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testAlarm),
+      signal: AbortSignal.timeout(20000),
+    });
+    const d = await r.json();
+    const srcColor = d.source === 'llm' ? 'var(--green)' : 'var(--yellow)';
+    document.getElementById('explainResult').innerHTML = `
+      <div class="result-card" style="border-color:rgba(168,85,247,.3); padding:8px 10px">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+          <span style="font-size:11px; font-weight:700; color:var(--purple)">Explanation</span>
+          <span class="badge" style="font-size:10px; color:${srcColor}; border:1px solid ${srcColor}">${esc(d.source)}</span>
+        </div>
+        <div style="font-size:11px; line-height:1.5; color:var(--text)">${esc(d.explanation || '')}</div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('explainResult').innerHTML =
+      `<div class="err-box" style="font-size:11px">${esc(e.message)}</div>`;
+  }
+  if (btn) btn.disabled = false;
+}
+
+// Auto-refresh central every 10s
+setInterval(loadCentralAll, 10000);
+
+// ─── Gateway (Phase 5) ────────────────────────────────────────
+const GW = 'http://localhost:8100';
+
+const GW_SENSORS = [
+  { key:'temperature',   label:'Temp',        unit:'°C',    min:0,  max:50,   step:0.1, def:24.0, dec:1 },
+  { key:'humidity',      label:'Humidity',    unit:'%',     min:0,  max:100,  step:0.5, def:65.0, dec:1 },
+  { key:'soil_moisture', label:'Soil Moist.', unit:'%',     min:0,  max:100,  step:0.5, def:55.0, dec:1 },
+  { key:'light',         label:'Light',       unit:' lux',  min:0,  max:2000, step:5,   def:700,  dec:0 },
+  { key:'ec',            label:'EC',          unit:' mS/cm',min:0,  max:5,    step:0.01,def:2.20, dec:2 },
+  { key:'ph',            label:'pH',          unit:'',      min:0,  max:14,   step:0.1, def:6.3,  dec:1 },
+];
+
+const GW_PRESETS = [
+  { v:{temperature:24,  humidity:65, soil_moisture:55, light:700,  ec:2.2, ph:6.3 } },
+  { v:{temperature:22,  humidity:88, soil_moisture:70, light:400,  ec:1.8, ph:6.1 } },
+  { v:{temperature:28,  humidity:45, soil_moisture:20, light:800,  ec:2.0, ph:6.5 } },
+  { v:{temperature:48,  humidity:99, soil_moisture:98, light:1950, ec:4.8, ph:1.2 } },
+];
+
+let _feedInterval = null;
+let _gwAlertFilter = 'all';
+
+// Build gateway sliders
+(function buildGwSliders() {
+  const el = document.getElementById('gw-sliders');
+  if (!el) return;
+  el.innerHTML = GW_SENSORS.map(s => `
+    <div class="slider-row">
+      <div class="slider-label">${s.label}</div>
+      <input type="range" id="gw-sl-${s.key}" min="${s.min}" max="${s.max}"
+        step="${s.step}" value="${s.def}" oninput="syncGwSlider('${s.key}')">
+      <div class="slider-val" id="gw-sv-${s.key}">${fmtVal(s.def, s.dec, s.unit)}</div>
+    </div>`).join('');
+})();
+
+function syncGwSlider(key) {
+  const s = GW_SENSORS.find(x => x.key === key);
+  const v = parseFloat(document.getElementById(`gw-sl-${key}`).value);
+  document.getElementById(`gw-sv-${key}`).textContent = fmtVal(v, s.dec, s.unit);
+}
+
+function applyGwPreset(i) {
+  const p = GW_PRESETS[i];
+  GW_SENSORS.forEach(s => {
+    document.getElementById(`gw-sl-${s.key}`).value = p.v[s.key];
+    syncGwSlider(s.key);
+  });
+}
+
+function getGwSensors() {
+  const out = {};
+  GW_SENSORS.forEach(s => { out[s.key] = parseFloat(document.getElementById(`gw-sl-${s.key}`).value); });
+  return out;
+}
+
+async function runFullPipeline() {
+  const btn = document.getElementById('gwRunBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Running…';
+  document.getElementById('gwPipelineResult').innerHTML =
+    '<div style="text-align:center; padding:20px"><span class="spinner"></span></div>';
+
+  const t0 = Date.now();
+  const payload = {
+    sensor_reading: {
+      node_id: 'greenhouse_01',
+      timestamp: new Date().toISOString(),
+      sensors: getGwSensors(),
+    },
+    image_b64: null,
+  };
+
+  try {
+    const r = await fetch(`${GW}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(12000),
+    });
+    const ms = Date.now() - t0;
+    const alarm = await r.json();
+    pushLog('Gateway /predict', r.status, ms, `level:${alarm.level} rule:${alarm.rule_id || alarm.source}`);
+
+    const lc = { INFO:'var(--muted)', WARNING:'var(--yellow)', HIGH:'#f97316', CRITICAL:'var(--red)' }[alarm.level] || 'var(--text)';
+    const bc = { INFO:'rgba(90,96,122,.3)', WARNING:'rgba(245,158,11,.35)', HIGH:'rgba(249,115,22,.35)', CRITICAL:'rgba(239,68,68,.4)' }[alarm.level] || 'var(--border)';
+
+    document.getElementById('gwPipelineResult').innerHTML = `
+      <div class="result-card" style="border-color:${bc}">
+        <div class="result-header">
+          <span style="font-weight:700; color:${lc}">${alarm.level}</span>
+          <span style="font-size:10px; color:var(--muted); font-family:var(--font-mono)">${ms}ms total</span>
+        </div>
+        <div class="kv-grid">
+          <div class="kv-row"><span class="kv-key">alarm_id</span><span class="kv-val" style="font-size:11px; color:var(--muted)">${esc(alarm.alarm_id)}</span></div>
+          <div class="kv-row"><span class="kv-key">source</span><span class="kv-val" style="color:var(--cyan)">${esc(alarm.source)}</span></div>
+          <div class="kv-row"><span class="kv-key">rule_id</span><span class="kv-val">${alarm.rule_id || '—'}</span></div>
+          <div class="kv-row"><span class="kv-key">synced</span><span class="kv-val" style="color:var(--muted)">${alarm.synced}</span></div>
+        </div>
+        ${ms < 2000 ? '<div style="margin-top:8px; font-size:10px; color:var(--green)">✓ Within 2s SLA</div>'
+                    : `<div style="margin-top:8px; font-size:10px; color:var(--yellow)">⚠ Exceeded 2s SLA (${ms}ms)</div>`}
+      </div>
+      <details style="margin-top:8px">
+        <summary style="font-size:11px; color:var(--muted); cursor:pointer; padding:4px">▶ Raw alarm JSON</summary>
+        <pre style="font-size:10px; max-height:120px">${esc(JSON.stringify(alarm, null, 2))}</pre>
+      </details>`;
+
+    loadGwAlerts();
+  } catch(e) {
+    const ms = Date.now() - t0;
+    pushLog('Gateway /predict', 0, ms, 'error: ' + e.message);
+    document.getElementById('gwPipelineResult').innerHTML =
+      `<div class="err-box">Error: ${esc(e.message)}<div class="err-hint">Is edge1_gateway running on :8100?</div></div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '▶ Run Full Pipeline';
+}
+
+// ── Unified health via Gateway ─────────────────────────────
+async function checkGatewayHealth() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) btn.disabled = true;
+
+  const GATEWAY_SERVICES = [
+    { key:'gateway',       label:'Gateway',   port:8100, icon:'⚡', color:'var(--cyan)' },
+    { key:'disease',       label:'Disease',   port:8101, icon:'🔬', color:'#f97316' },
+    { key:'irrigation',    label:'Irrigation',port:8102, icon:'💧', color:'var(--blue)' },
+    { key:'nutrition',     label:'Nutrition', port:8103, icon:'🌿', color:'var(--green)' },
+    { key:'anomaly',       label:'Anomaly',   port:8104, icon:'🔍', color:'var(--purple)' },
+    { key:'output_monitor',label:'Monitor',   port:8105, icon:'📊', color:'var(--cyan)' },
+    { key:'fusion',        label:'Fusion',    port:8106, icon:'⚡', color:'var(--yellow)' },
+    { key:'alarm',         label:'Alarm',     port:8107, icon:'🔔', color:'var(--red)' },
+  ];
+
+  // Render placeholders
+  document.getElementById('healthGrid').innerHTML = GATEWAY_SERVICES.map(s => `
+    <div class="health-item" id="hcard-${s.key}">
+      <div class="dot busy" id="dot-${s.key}"></div>
+      <div class="health-name">${s.icon} ${s.label}</div>
+      <div class="health-port">:${s.port}</div>
+      <div class="health-msg" id="hmsg-${s.key}">…</div>
+    </div>`).join('');
+
+  // Try unified gateway health first
+  try {
+    const t = Date.now();
+    const r = await fetch(`${GW}/health`, { signal: AbortSignal.timeout(4000) });
+    const ms = Date.now() - t;
+    const d = await r.json();
+    pushLog('Gateway /health', r.status, ms, `status:${d.status}`);
+
+    // Update gateway dot
+    const gwOk = d.status === 'ok' || d.status === 'degraded';
+    setDot('gateway', gwOk ? 'ok' : 'error');
+    document.getElementById('hmsg-gateway').textContent = `${d.status} · ${ms}ms`;
+    document.getElementById('hcard-gateway').className = `health-item ${gwOk ? 'ok' : 'error'}`;
+
+    // Update downstream from services map
+    const svcs = d.services || {};
+    for (const [key, status] of Object.entries(svcs)) {
+      const dotId = key === 'output_monitor' ? 'output_monitor' : key;
+      setDot(dotId, status === 'ok' ? 'ok' : 'error');
+      setText(`hmsg-${dotId}`, status);
+      const card = document.getElementById(`hcard-${dotId}`);
+      if (card) card.className = `health-item ${status === 'ok' ? 'ok' : 'error'}`;
+    }
+  } catch(e) {
+    setDot('gateway', 'error');
+    setText('hmsg-gateway', '✗ unreachable');
+    // Fall back to individual checks
+    await Promise.allSettled(SERVICES.filter(s => s.key !== 'alarm').map(checkHealth));
+  }
+
+  if (btn) btn.disabled = false;
+}
+
+// ── Live Feed ──────────────────────────────────────────────
+function startLiveFeed() {
+  document.getElementById('feedStartBtn').disabled = true;
+  document.getElementById('feedStopBtn').disabled  = false;
+  loadLiveFeed();
+  _feedInterval = setInterval(loadLiveFeed, 2000);
+}
+
+function stopLiveFeed() {
+  clearInterval(_feedInterval);
+  _feedInterval = null;
+  document.getElementById('feedStartBtn').disabled = false;
+  document.getElementById('feedStopBtn').disabled  = true;
+}
+
+async function loadLiveFeed() {
+  try {
+    const r = await fetch(`${GW}/logs?limit=5`, { signal: AbortSignal.timeout(3000) });
+    const data = await r.json();
+    const items = data.items || data;
+    if (!items.length) {
+      document.getElementById('liveFeedPanel').innerHTML =
+        '<div style="color:var(--muted); font-size:12px; text-align:center; padding:12px">No sensor readings yet.</div>';
+      return;
+    }
+    document.getElementById('liveFeedPanel').innerHTML = items.map(item => {
+      const ts = (item.timestamp || item.created_at || '').slice(0, 19).replace('T', ' ');
+      return `<div style="padding:5px 0; border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr; gap:8px">
+        <span style="color:var(--muted); white-space:nowrap">${esc(ts)}</span>
+        <span style="color:var(--cyan); font-family:var(--font-mono); font-size:10px">
+          T:${item.temperature?.toFixed(1)}°C · H:${item.humidity?.toFixed(0)}% · S:${item.soil_moisture?.toFixed(0)}% · L:${item.light?.toFixed(0)} · EC:${item.ec?.toFixed(2)} · pH:${item.ph?.toFixed(1)}
+        </span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('liveFeedPanel').innerHTML =
+      `<div class="err-box" style="font-size:11px">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+// ── Alerts panel ───────────────────────────────────────────
+function gwSetFilter(level) {
+  _gwAlertFilter = level;
+  loadGwAlerts();
+}
+
+async function loadGwAlerts() {
+  const params = _gwAlertFilter !== 'all' ? `?level=${_gwAlertFilter}&limit=20` : '?limit=20';
+  try {
+    const [rAlerts, rSummary] = await Promise.all([
+      fetch(`${GW}/alerts${params}`, { signal: AbortSignal.timeout(4000) }),
+      fetch(`${GW8107}/alerts/summary`, { signal: AbortSignal.timeout(4000) }).catch(() => null),
+    ]);
+    const alarms = await rAlerts.json();
+    const items  = Array.isArray(alarms) ? alarms : (alarms.items || []);
+
+    // Summary badges via alarm engine direct
+    try {
+      const sr = await fetch('http://localhost:8107/alerts/summary', { signal: AbortSignal.timeout(2000) });
+      if (sr.ok) {
+        const s = await sr.json();
+        const bm = { CRITICAL:'badge-critical', HIGH:'badge-high', WARNING:'badge-warning', INFO:'badge-info' };
+        document.getElementById('gwSummaryBadges').innerHTML =
+          Object.entries(s.by_level || {}).filter(([,n]) => n > 0)
+            .map(([lv, n]) => `<span class="badge ${bm[lv] || ''}">${esc(lv)}: ${n}</span>`).join('');
+      }
+    } catch {}
+
+    if (!items.length) {
+      document.getElementById('gwAlertsBody').innerHTML =
+        `<tr><td colspan="4" class="placeholder-cell">No alarms.</td></tr>`;
+      return;
+    }
+    const lc = { INFO:'var(--muted)', WARNING:'var(--yellow)', HIGH:'#f97316', CRITICAL:'var(--red)' };
+    document.getElementById('gwAlertsBody').innerHTML = items.map(a => `<tr>
+      <td style="color:var(--muted); font-size:10px; white-space:nowrap">${(a.timestamp||'').slice(0,19).replace('T',' ')}</td>
+      <td style="font-weight:700; color:${lc[a.level]||'var(--text)'}">${esc(a.level)}</td>
+      <td style="color:var(--cyan); font-size:10px">${esc(a.source)}</td>
+      <td style="color:var(--blue); font-size:10px">${esc(a.rule_id||'—')}</td>
+    </tr>`).join('');
+  } catch(e) {
+    document.getElementById('gwAlertsBody').innerHTML =
+      `<tr><td colspan="4" class="placeholder-cell" style="color:var(--red)">${esc(e.message)}</td></tr>`;
+  }
+}
+
+const GW8107 = 'http://localhost:8107';
+
+// Override init to also trigger gateway health
+const _origInit = init;
+function init() {
+  _origInit();
+  checkGatewayHealth();
+  setInterval(loadGwAlerts, 5000);
+  // Load central layer data on boot
+  loadCentralAll();
 }
 
 // ─── Boot ─────────────────────────────────────────────────────

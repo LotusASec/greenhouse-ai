@@ -70,3 +70,14 @@ CREATE TABLE IF NOT EXISTS monitor_events (
 
 CREATE INDEX IF NOT EXISTS idx_monitor_events_node_ts
   ON monitor_events (node_id, timestamp);
+
+-- 4.5 node_registry (Phase 6 — central layer)
+CREATE TABLE IF NOT EXISTS node_registry (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  node_id       TEXT    UNIQUE NOT NULL,
+  gateway_url   TEXT    NOT NULL,
+  registered_at TEXT    DEFAULT (datetime('now')),
+  last_ping     TEXT,
+  last_sync     TEXT,
+  status        TEXT    DEFAULT 'unknown'
+);

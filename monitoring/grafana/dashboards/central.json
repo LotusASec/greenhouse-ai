@@ -1,0 +1,191 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "datasource", "id": "frser-sqlite-datasource", "name": "SQLite", "version": "1.0.0"}
+  ],
+  "annotations": {"list": []},
+  "description": "Central multi-greenhouse overview — aggregated alarms, node comparison, yield forecast",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "tags": ["central", "multi-node"],
+  "time": {"from": "now-7d", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Central — Multi-Greenhouse Overview",
+  "uid": "greenhouse-central",
+  "version": 1,
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Node Comparison — Alarm Summary",
+      "description": "Total, critical and high alarms per greenhouse node",
+      "type": "table",
+      "gridPos": {"h": 5, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "critical"},
+           "properties": [{"id": "custom.displayMode", "value": "color-background"},
+                          {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "#E02F44", "value": 1}]}}]},
+          {"matcher": {"id": "byName", "options": "high"},
+           "properties": [{"id": "custom.displayMode", "value": "color-background"},
+                          {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "#FF780A", "value": 1}]}}]}
+        ]
+      },
+      "options": {"showHeader": true},
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+          "queryText": "SELECT node_id, COUNT(*) as total_alarms, SUM(CASE WHEN level='CRITICAL' THEN 1 ELSE 0 END) as critical, SUM(CASE WHEN level='HIGH' THEN 1 ELSE 0 END) as high, SUM(CASE WHEN level='WARNING' THEN 1 ELSE 0 END) as warning, MAX(timestamp) as last_alarm FROM alarms GROUP BY node_id ORDER BY node_id",
+          "rawQuery": true, "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Combined Alarm Feed",
+      "description": "Latest alarms from all greenhouse nodes",
+      "type": "table",
+      "gridPos": {"h": 10, "w": 16, "x": 0, "y": 5},
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "level"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "mappings", "value": [
+                {"type": "value", "options": {
+                  "CRITICAL": {"color": "#E02F44", "index": 0},
+                  "HIGH":     {"color": "#FF780A", "index": 1},
+                  "WARNING":  {"color": "#F2CC0C", "index": 2},
+                  "INFO":     {"color": "#5794F2", "index": 3}
+                }}
+              ]}
+            ]
+          }
+        ]
+      },
+      "options": {"showHeader": true, "sortBy": [{"displayName": "timestamp", "desc": true}]},
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+          "queryText": "SELECT timestamp, node_id, level, source, rule_id, SUBSTR(llm_explanation, 1, 80) as explanation FROM alarms ORDER BY timestamp DESC LIMIT 50",
+          "rawQuery": true, "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Alarm Trend — Last 7 Days",
+      "description": "Hourly alarm count per node over the last 7 days",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 5},
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineInterpolation": "smooth", "showPoints": "never", "lineWidth": 2}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+          "queryText": "SELECT CAST(strftime('%s', timestamp) / 3600 AS INTEGER) * 3600000 as time, node_id, COUNT(*) as alarm_count FROM alarms WHERE timestamp >= datetime('now', '-7 days') GROUP BY CAST(strftime('%s', timestamp) / 3600 AS INTEGER), node_id ORDER BY time ASC",
+          "rawQuery": true, "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Alarm Source Distribution",
+      "description": "Rule engine vs sensor anomaly vs model monitor (all nodes)",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 15},
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "right"}, "pieType": "donut"},
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+          "queryText": "SELECT source, COUNT(*) as count FROM alarms GROUP BY source ORDER BY count DESC",
+          "rawQuery": true, "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "LLM Explanations",
+      "description": "Latest AI-generated alarm explanations",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 15},
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "llm_explanation"},
+           "properties": [{"id": "custom.width", "value": 500}, {"id": "custom.wrap", "value": true}]}
+        ]
+      },
+      "options": {"showHeader": true},
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+          "queryText": "SELECT timestamp, node_id, level, llm_explanation FROM alarms WHERE llm_explanation IS NOT NULL AND llm_explanation != '' ORDER BY timestamp DESC LIMIT 10",
+          "rawQuery": true, "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Node Status",
+      "description": "Registered nodes and their sync status",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 23},
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "status"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "mappings", "value": [
+                {"type": "value", "options": {
+                  "ok":           {"color": "green",   "index": 0},
+                  "registered":   {"color": "#5794F2", "index": 1},
+                  "unreachable":  {"color": "#E02F44", "index": 2},
+                  "unknown":      {"color": "gray",    "index": 3}
+                }}
+              ]}
+            ]
+          }
+        ]
+      },
+      "options": {"showHeader": true},
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "CentralDB"},
+          "queryText": "SELECT node_id, gateway_url, status, last_ping, last_sync, registered_at FROM node_registry ORDER BY node_id",
+          "rawQuery": true, "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

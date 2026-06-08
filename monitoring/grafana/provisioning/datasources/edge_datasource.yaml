@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: EdgeDB
+    uid: EdgeDB
+    type: frser-sqlite-datasource
+    access: proxy
+    url: /data/greenhouse.db
+    isDefault: false
+    editable: true
+    jsonData:
+      path: /data/greenhouse.db
