@@ -11,3 +11,12 @@ features:
 labels:
   # Internal name "deficiency_class" maps to CSV column "label"
   deficiency_class: "label"
+
+# CSV "label" integer → MASTER_SPEC §3.4 class name.
+# Must stay in sync with the label generation in models/shared/
+# (generate_training_data.py / prepare_real_datasets.py).
+class_mapping:
+  0: "N_deficiency"
+  1: "P_deficiency"
+  2: "K_deficiency"
+  3: "normal"

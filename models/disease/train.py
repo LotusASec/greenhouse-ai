@@ -154,9 +154,15 @@ def main() -> None:
     config_idx = {cls: i for i, cls in enumerate(class_names)}
 
     def remap(ds, config_idx, folder_idx):
-        """Remap dataset targets from folder order → config order."""
+        """Remap dataset labels from folder order → config order.
+
+        DatasetFolder.__getitem__ reads labels from ds.samples — remapping
+        only ds.targets would be a silent no-op, so rewrite samples too.
+        """
         folder_to_config = {folder_idx[cls]: config_idx[cls] for cls in class_names}
-        ds.targets = [folder_to_config[t] for t in ds.targets]
+        ds.samples = [(p, folder_to_config[t]) for p, t in ds.samples]
+        ds.imgs = ds.samples
+        ds.targets = [t for _, t in ds.samples]
         ds.class_to_idx = config_idx
         return ds
 

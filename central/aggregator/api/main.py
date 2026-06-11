@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     app.state.agg = agg
     # Register nodes from env
     n1 = os.getenv("NODE1_GATEWAY_URL", "http://edge1_gateway:8100")
-    n2 = os.getenv("NODE2_GATEWAY_URL", "http://edge2_gateway:8200")
+    n2 = os.getenv("NODE2_GATEWAY_URL", "http://edge2_gateway:8100")
     agg.register_node("greenhouse_01", n1)
     agg.register_node("greenhouse_02", n2)
     # Start sync loop

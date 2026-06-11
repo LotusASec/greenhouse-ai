@@ -53,19 +53,13 @@ def _get_daily_avg(db_path: str, node_id: str, days: int = SEQ_LEN) -> Optional[
                    AVG(light)       AS light,
                    AVG(ec)          AS ec,
                    AVG(ph)          AS ph
-            FROM (
-                SELECT date(timestamp) AS day, temperature, humidity,
-                       soil_moisture, light, ec, ph
-                FROM sensor_readings
-                WHERE node_id = ?
-                ORDER BY timestamp DESC
-                LIMIT ?
-            )
-            GROUP BY day
-            ORDER BY day DESC
+            FROM sensor_readings
+            WHERE node_id = ?
+            GROUP BY date(timestamp)
+            ORDER BY date(timestamp) DESC
             LIMIT ?
             """,
-            (node_id, days * 24, days),
+            (node_id, days),
         ).fetchall()
         conn.close()
         if len(rows) < days:

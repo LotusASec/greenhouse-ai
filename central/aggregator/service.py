@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
   created_at    TEXT    DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_central_sr_node_ts ON sensor_readings (node_id, timestamp);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_central_sr_unique ON sensor_readings (node_id, timestamp);
 
 CREATE TABLE IF NOT EXISTS node_registry (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,21 +132,44 @@ class CentralAggregator:
         url = node["gateway_url"]
         try:
             async with httpx.AsyncClient() as client:
-                # 1. Pull unsynced alarms
-                r = await client.get(f"{url}/alerts/unsynced", timeout=5.0)
+                # 1. Pull unsynced alarms (large backlog possible after a
+                #    long disconnection — endpoint is unbounded, so be patient)
+                r = await client.get(f"{url}/alerts/unsynced", timeout=90.0)
                 r.raise_for_status()
                 alarms = r.json()
                 if isinstance(alarms, dict):
                     alarms = alarms.get("alarms", [])
 
-                # 2. Write to central DB
+                # 2. Write to central DB (INSERT OR IGNORE → count = new rows)
                 count = self._write_alarms(alarms)
 
-                # 3. Mark synced on edge
-                if count > 0:
-                    await client.post(f"{url}/alerts/sync-all", timeout=5.0)
+                # 3. Mark synced on edge. Decision uses the PULLED count, not
+                #    the inserted count: after a failed sync-all the re-pulled
+                #    alarms insert 0 new rows but the edge flags must still be
+                #    cleared, or the same batch is re-pulled forever.
+                if alarms:
+                    try:
+                        await client.post(f"{url}/alerts/sync-all", timeout=30.0)
+                    except Exception as exc:
+                        # Half-sync (SORUN-E): alarms are already in central but
+                        # remain flagged unsynced on the edge — they will be
+                        # re-pulled next cycle and deduped by INSERT OR IGNORE.
+                        log.warning(
+                            "sync-all failed for node %s after writing %d/%d "
+                            "alarms to central — batch will be re-pulled next "
+                            "cycle (deduplicated): %s",
+                            node_id, count, len(alarms), exc,
+                        )
 
-                # 4. Update node metadata
+                # 4. Pull sensor readings (feeds central sensor_readings → LSTM yield)
+                #    Best-effort: a failure here must not break alarm sync.
+                sensor_count = 0
+                try:
+                    sensor_count = await self._sync_sensor_readings(client, node_id, url)
+                except Exception as exc:
+                    log.warning("Sensor reading sync failed for node %s: %s", node_id, exc)
+
+                # 5. Update node metadata
                 now = datetime.now(timezone.utc).isoformat()
                 self.nodes[node_id].update({
                     "last_ping": now,
@@ -160,8 +184,11 @@ class CentralAggregator:
 
                 self._total_synced += count
                 self._last_sync_at  = now
-                log.info("Synced %d alarms from node %s", count, node_id)
-                return {"node_id": node_id, "synced_count": count, "timestamp": now}
+                log.info("Synced %d alarms (%d pulled), %d sensor readings from node %s",
+                         count, len(alarms), sensor_count, node_id)
+                return {"node_id": node_id, "synced_count": count,
+                        "pulled_count": len(alarms),
+                        "sensor_synced_count": sensor_count, "timestamp": now}
 
         except Exception as exc:
             log.warning("Node %s unreachable: %s", node_id, exc)
@@ -281,9 +308,59 @@ class CentralAggregator:
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
+    async def _sync_sensor_readings(
+        self,
+        client: httpx.AsyncClient,
+        node_id: str,
+        url: str,
+        batch_size: int = 5000,
+        max_batches: int = 20,
+    ) -> int:
+        """Pull sensor readings newer than the last stored timestamp.
+
+        Paginates until caught up (or max_batches per cycle, so the initial
+        backlog drains over a few sync cycles without blocking the loop).
+        """
+        total = 0
+        for _ in range(max_batches):
+            with _get_conn(self.db_path) as conn:
+                row = conn.execute(
+                    "SELECT MAX(timestamp) FROM sensor_readings WHERE node_id=:n",
+                    {"n": node_id},
+                ).fetchone()
+            since = row[0] if row else None
+
+            params: dict = {"limit": batch_size}
+            if since:
+                params["since"] = since
+            r = await client.get(f"{url}/sensors/readings", params=params, timeout=30.0)
+            r.raise_for_status()
+            readings = r.json().get("readings", [])
+            if not readings:
+                break
+
+            with _get_conn(self.db_path) as conn:
+                conn.executemany(
+                    """
+                    INSERT OR IGNORE INTO sensor_readings
+                      (node_id, timestamp, temperature, humidity,
+                       soil_moisture, light, ec, ph)
+                    VALUES
+                      (:node_id, :timestamp, :temperature, :humidity,
+                       :soil_moisture, :light, :ec, :ph)
+                    """,
+                    readings,
+                )
+            total += len(readings)
+            if len(readings) < batch_size:
+                break
+        return total
+
     def _write_alarms(self, alarms: list) -> int:
-        count = 0
+        """Insert alarms into central DB. Returns NEWLY inserted row count
+        (duplicates are skipped by INSERT OR IGNORE and not counted)."""
         with _get_conn(self.db_path) as conn:
+            before = conn.total_changes
             for alarm in alarms:
                 tv = alarm.get("trigger_values", {})
                 if isinstance(tv, dict):
@@ -308,5 +385,5 @@ class CentralAggregator:
                         "llm_explanation": alarm.get("llm_explanation"),
                     },
                 )
-                count += 1
+            count = conn.total_changes - before
         return count

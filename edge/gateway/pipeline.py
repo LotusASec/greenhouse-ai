@@ -132,8 +132,18 @@ class EdgePipeline:
                 log.info("ImageSimulator ready — dataset: %s", dataset_path)
             except Exception as exc:
                 log.warning("ImageSimulator unavailable (%s) — running without images", exc)
+        elif not dataset_path:
+            log.warning(
+                "DATASET_PATH not set — no images will be sent to the disease "
+                "model; it falls back to top_confidence=0.0, so disease rules "
+                "RULE_001/RULE_003 can NEVER fire. Set DATASET_PATH to the "
+                "PlantVillage dataset root to enable disease detection."
+            )
         else:
-            log.info("DATASET_PATH not set — disease model will use fallback values")
+            log.warning(
+                "ImageSimulator module unavailable — disease model will use "
+                "fallback values (top_confidence=0.0); RULE_001/RULE_003 disabled."
+            )
 
         # ── Loop state ────────────────────────────────────────────────────
         self._running = False
@@ -289,6 +299,28 @@ class EdgePipeline:
             return [dict(r) for r in rows]
         except Exception as exc:
             log.error("get_logs failed: %s", exc)
+            return []
+
+    def get_readings_since(self, since: Optional[str] = None, limit: int = 5000) -> list:
+        """Incremental sensor reading export — pulled by central aggregator."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT node_id, timestamp, temperature, humidity,
+                       soil_moisture, light, ec, ph
+                FROM sensor_readings
+                WHERE (:since IS NULL OR timestamp > :since)
+                ORDER BY timestamp ASC
+                LIMIT :limit
+                """,
+                {"since": since, "limit": limit},
+            ).fetchall()
+            conn.close()
+            return [dict(r) for r in rows]
+        except Exception as exc:
+            log.error("get_readings_since failed: %s", exc)
             return []
 
     # ── Private model callers ─────────────────────────────────────────────────

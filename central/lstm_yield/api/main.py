@@ -6,6 +6,7 @@ Phase 6: GET /yield/{node_id}, GET /yield
 
 import logging
 import os
+import sqlite3
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List
 
@@ -33,7 +34,22 @@ logging.basicConfig(
 )
 log = logging.getLogger(SERVICE_NAME)
 
-KNOWN_NODES = ["greenhouse_01", "greenhouse_02"]
+def _known_nodes() -> List[str]:
+    """Node ids from node_registry; falls back to nodes seen in sensor_readings."""
+    try:
+        conn = sqlite3.connect(CENTRAL_DB_PATH)
+        rows = conn.execute(
+            "SELECT node_id FROM node_registry ORDER BY node_id"
+        ).fetchall()
+        if not rows:
+            rows = conn.execute(
+                "SELECT DISTINCT node_id FROM sensor_readings ORDER BY node_id"
+            ).fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+    except Exception as exc:
+        log.warning("Could not read node list from %s: %s", CENTRAL_DB_PATH, exc)
+        return []
 
 
 @asynccontextmanager
@@ -65,5 +81,5 @@ async def yield_for_node(node_id: str) -> Dict[str, Any]:
 
 @app.get("/yield")
 async def yield_all() -> Dict[str, Any]:
-    results = {nid: lstm_predict(nid, CENTRAL_DB_PATH) for nid in KNOWN_NODES}
+    results = {nid: lstm_predict(nid, CENTRAL_DB_PATH) for nid in _known_nodes()}
     return {"forecasts": results}

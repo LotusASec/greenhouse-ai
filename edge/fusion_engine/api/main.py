@@ -80,6 +80,15 @@ def _ensure_db() -> None:
 
 
 def _write_alarm(alarm: dict) -> None:
+    """Persist the evaluated alarm to the edge `alarms` table (INT-08).
+
+    NOTE — intentional dual-write: AlarmEngine also writes the same alarm to
+    this table (INT-10) after cooldown filtering. The shared PRIMARY KEY on
+    alarm_id + INSERT OR IGNORE makes the writes idempotent, so no duplicates
+    occur. FusionEngine's write guarantees persistence even if AlarmEngine is
+    down; AlarmEngine remains the authority for cooldown/suppression state.
+    Do not remove either write without revisiting INT-08/INT-10.
+    """
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute(

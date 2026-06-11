@@ -85,11 +85,14 @@ def evaluate(clf, test: pd.DataFrame, col_map: dict) -> dict:
     return {"weighted_f1": weighted_f1}
 
 
-def save_model(clf, model_dir: str) -> None:
+def save_model(clf, model_dir: str, class_mapping: dict) -> None:
     out = Path(model_dir)
     out.mkdir(parents=True, exist_ok=True)
-    joblib.dump(clf, out / "nutrition_model.joblib")
-    log.info("Saved → %s", out / "nutrition_model.joblib")
+    # Artifact carries its own label semantics (TR-17) — inference must not
+    # hardcode the int → class-name mapping.
+    artifact = {"model": clf, "class_mapping": class_mapping}
+    joblib.dump(artifact, out / "nutrition_model.joblib")
+    log.info("Saved → %s (classes: %s)", out / "nutrition_model.joblib", class_mapping)
 
 
 def main() -> None:
@@ -118,7 +121,8 @@ def main() -> None:
     if wf1 < 0.50:
         raise ValueError(f"Nutrition weighted F1 {wf1:.4f} below 0.50 gate")
 
-    save_model(clf, args.model_dir)
+    class_mapping = {int(k): str(v) for k, v in col_map["class_mapping"].items()}
+    save_model(clf, args.model_dir, class_mapping)
     log.info("Training complete ✓")
 
 

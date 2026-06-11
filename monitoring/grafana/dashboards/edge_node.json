@@ -1,9 +1,16 @@
 {
   "__inputs": [],
   "__requires": [
-    {"type": "datasource", "id": "frser-sqlite-datasource", "name": "SQLite", "version": "1.0.0"}
+    {
+      "type": "datasource",
+      "id": "frser-sqlite-datasource",
+      "name": "SQLite",
+      "version": "1.0.0"
+    }
   ],
-  "annotations": {"list": []},
+  "annotations": {
+    "list": []
+  },
   "description": "Real-time edge node monitoring — sensor readings, alarms, model output",
   "editable": true,
   "fiscalYearStartMonth": 0,
@@ -12,56 +19,196 @@
   "links": [],
   "refresh": "5s",
   "schemaVersion": 36,
-  "tags": ["edge", "greenhouse"],
-  "time": {"from": "now-24h", "to": "now"},
+  "tags": [
+    "edge",
+    "greenhouse"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "Edge Node Dashboard",
   "uid": "greenhouse-edge-node",
   "version": 1,
-  "templating": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "EdgeDB"
+        },
+        "definition": "SELECT DISTINCT node_id FROM sensor_readings ORDER BY node_id",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Node",
+        "multi": false,
+        "name": "node_id",
+        "options": [],
+        "query": "SELECT DISTINCT node_id FROM sensor_readings ORDER BY node_id",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
   "panels": [
     {
       "id": 1,
       "title": "Latest Sensor Readings",
       "description": "Most recent sensor values from the node",
       "type": "table",
-      "gridPos": {"h": 5, "w": 24, "x": 0, "y": 0},
-      "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "EdgeDB"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 80},
-              {"color": "red", "value": 90}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
             ]
           }
         },
         "overrides": [
-          {"matcher": {"id": "byName", "options": "temperature"},
-           "properties": [{"id": "unit", "value": "celsius"}, {"id": "decimals", "value": 1}]},
-          {"matcher": {"id": "byName", "options": "humidity"},
-           "properties": [{"id": "unit", "value": "percent"}, {"id": "decimals", "value": 1}]},
-          {"matcher": {"id": "byName", "options": "soil_moisture"},
-           "properties": [{"id": "unit", "value": "percent"}, {"id": "decimals", "value": 1}]},
-          {"matcher": {"id": "byName", "options": "light"},
-           "properties": [{"id": "unit", "value": "lux"}, {"id": "decimals", "value": 0}]},
-          {"matcher": {"id": "byName", "options": "ec"},
-           "properties": [{"id": "unit", "value": "mS/cm"}, {"id": "decimals", "value": 2}]},
-          {"matcher": {"id": "byName", "options": "ph"},
-           "properties": [{"id": "unit", "value": ""}, {"id": "decimals", "value": 1}]}
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "humidity"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "soil_moisture"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "light"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lux"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ec"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "mS/cm"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ph"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": ""
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
         ]
       },
-      "options": {"showHeader": true, "sortBy": []},
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
       "targets": [
         {
-          "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-          "queryText": "SELECT timestamp, temperature, humidity, soil_moisture, light, ec, ph FROM sensor_readings WHERE node_id = 'greenhouse_01' ORDER BY timestamp DESC LIMIT 1",
-          "rawQuery": true, "format": "table",
-          "refId": "A"
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "EdgeDB"
+          },
+          "queryText": "SELECT timestamp, temperature, humidity, soil_moisture, light, ec, ph FROM sensor_readings WHERE node_id = '$node_id' ORDER BY timestamp DESC LIMIT 1",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A",
+          "rawQueryText": "SELECT timestamp, temperature, humidity, soil_moisture, light, ec, ph FROM sensor_readings WHERE node_id = '$node_id' ORDER BY timestamp DESC LIMIT 1"
         }
       ]
     },
@@ -70,30 +217,116 @@
       "title": "Sensor Trend — Last 24 Hours",
       "description": "Temperature, humidity and soil moisture over time",
       "type": "timeseries",
-      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 5},
-      "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "EdgeDB"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineInterpolation": "smooth", "showPoints": "never", "lineWidth": 2},
-          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": [
-          {"matcher": {"id": "byName", "options": "temperature"},
-           "properties": [{"id": "unit", "value": "celsius"}, {"id": "color", "value": {"fixedColor": "#FF780A", "mode": "fixed"}}]},
-          {"matcher": {"id": "byName", "options": "humidity"},
-           "properties": [{"id": "unit", "value": "percent"}, {"id": "color", "value": {"fixedColor": "#5794F2", "mode": "fixed"}}]},
-          {"matcher": {"id": "byName", "options": "soil_moisture"},
-           "properties": [{"id": "unit", "value": "percent"}, {"id": "color", "value": {"fixedColor": "#37872D", "mode": "fixed"}}]}
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF780A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "humidity"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "soil_moisture"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#37872D",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
         ]
       },
-      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-          "queryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60000 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = 'greenhouse_01' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC",
-          "rawQuery": true, "format": "time_series",
-          "refId": "A"
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "EdgeDB"
+          },
+          "queryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60000 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = '$node_id' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A",
+          "rawQueryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60000 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = '$node_id' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC"
         }
       ]
     },
@@ -102,32 +335,79 @@
       "title": "Alarm History",
       "description": "Last 20 alarms for this node",
       "type": "table",
-      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 5},
-      "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "EdgeDB"
+      },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
           {
-            "matcher": {"id": "byName", "options": "level"},
+            "matcher": {
+              "id": "byName",
+              "options": "level"
+            },
             "properties": [
-              {"id": "custom.displayMode", "value": "color-background"},
-              {"id": "mappings", "value": [
-                {"type": "value", "options": {"CRITICAL": {"color": "#E02F44", "index": 0},
-                                              "HIGH":     {"color": "#FF780A", "index": 1},
-                                              "WARNING":  {"color": "#F2CC0C", "index": 2},
-                                              "INFO":     {"color": "#5794F2", "index": 3}}}
-              ]}
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "CRITICAL": {
+                        "color": "#E02F44",
+                        "index": 0
+                      },
+                      "HIGH": {
+                        "color": "#FF780A",
+                        "index": 1
+                      },
+                      "WARNING": {
+                        "color": "#F2CC0C",
+                        "index": 2
+                      },
+                      "INFO": {
+                        "color": "#5794F2",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
             ]
           }
         ]
       },
-      "options": {"showHeader": true, "sortBy": [{"displayName": "timestamp", "desc": true}]},
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "timestamp",
+            "desc": true
+          }
+        ]
+      },
       "targets": [
         {
-          "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-          "queryText": "SELECT timestamp, level, source, rule_id, trigger_values FROM alarms WHERE node_id = 'greenhouse_01' ORDER BY timestamp DESC LIMIT 20",
-          "rawQuery": true, "format": "table",
-          "refId": "A"
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "EdgeDB"
+          },
+          "queryText": "SELECT timestamp, level, source, rule_id, trigger_values FROM alarms WHERE node_id = '$node_id' ORDER BY timestamp DESC LIMIT 20",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A",
+          "rawQueryText": "SELECT timestamp, level, source, rule_id, trigger_values FROM alarms WHERE node_id = '$node_id' ORDER BY timestamp DESC LIMIT 20"
         }
       ]
     },
@@ -136,24 +416,99 @@
       "title": "Alarm Level Distribution",
       "description": "Breakdown of alarms by severity",
       "type": "piechart",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 14},
-      "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "EdgeDB"
+      },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
-          {"matcher": {"id": "byName", "options": "CRITICAL"}, "properties": [{"id": "color", "value": {"fixedColor": "#E02F44", "mode": "fixed"}}]},
-          {"matcher": {"id": "byName", "options": "HIGH"},     "properties": [{"id": "color", "value": {"fixedColor": "#FF780A", "mode": "fixed"}}]},
-          {"matcher": {"id": "byName", "options": "WARNING"},  "properties": [{"id": "color", "value": {"fixedColor": "#F2CC0C", "mode": "fixed"}}]},
-          {"matcher": {"id": "byName", "options": "INFO"},     "properties": [{"id": "color", "value": {"fixedColor": "#5794F2", "mode": "fixed"}}]}
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CRITICAL"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#E02F44",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HIGH"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF780A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WARNING"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2CC0C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "INFO"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
         ]
       },
-      "options": {"legend": {"displayMode": "table", "placement": "right"}, "pieType": "pie"},
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "pieType": "pie"
+      },
       "targets": [
         {
-          "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-          "queryText": "SELECT level, COUNT(*) as count FROM alarms WHERE node_id = 'greenhouse_01' GROUP BY level",
-          "rawQuery": true, "format": "table",
-          "refId": "A"
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "EdgeDB"
+          },
+          "queryText": "SELECT level, COUNT(*) as count FROM alarms WHERE node_id = '$node_id' GROUP BY level",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A",
+          "rawQueryText": "SELECT level, COUNT(*) as count FROM alarms WHERE node_id = '$node_id' GROUP BY level"
         }
       ]
     },
@@ -162,22 +517,41 @@
       "title": "Alarm Source Distribution",
       "description": "Rule engine vs sensor anomaly vs model monitor",
       "type": "barchart",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 14},
-      "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "EdgeDB"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
       "options": {
         "barWidth": 0.6,
         "groupWidth": 0.7,
-        "legend": {"displayMode": "list", "placement": "bottom"},
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
         "orientation": "vertical",
         "xTickLabelRotation": -15
       },
       "targets": [
         {
-          "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-          "queryText": "SELECT source, COUNT(*) as count FROM alarms WHERE node_id = 'greenhouse_01' GROUP BY source",
-          "rawQuery": true, "format": "table",
-          "refId": "A"
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "EdgeDB"
+          },
+          "queryText": "SELECT source, COUNT(*) as count FROM alarms WHERE node_id = '$node_id' GROUP BY source",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A",
+          "rawQueryText": "SELECT source, COUNT(*) as count FROM alarms WHERE node_id = '$node_id' GROUP BY source"
         }
       ]
     },
@@ -186,30 +560,67 @@
       "title": "Model Output Monitor — Recent Events",
       "description": "Z-score anomaly detection events per model",
       "type": "table",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14},
-      "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "EdgeDB"
+      },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
           {
-            "matcher": {"id": "byName", "options": "is_anomaly"},
+            "matcher": {
+              "id": "byName",
+              "options": "is_anomaly"
+            },
             "properties": [
-              {"id": "custom.displayMode", "value": "color-background"},
-              {"id": "mappings", "value": [
-                {"type": "value", "options": {"0": {"color": "green", "index": 0, "text": "normal"},
-                                              "1": {"color": "#E02F44", "index": 1, "text": "ANOMALY"}}}
-              ]}
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "normal"
+                      },
+                      "1": {
+                        "color": "#E02F44",
+                        "index": 1,
+                        "text": "ANOMALY"
+                      }
+                    }
+                  }
+                ]
+              }
             ]
           }
         ]
       },
-      "options": {"showHeader": true},
+      "options": {
+        "showHeader": true
+      },
       "targets": [
         {
-          "datasource": {"type": "frser-sqlite-datasource", "uid": "EdgeDB"},
-          "queryText": "SELECT timestamp, model_name, ROUND(metric_value, 4) as metric_value, ROUND(z_score, 3) as z_score, is_anomaly FROM monitor_events WHERE node_id = 'greenhouse_01' ORDER BY timestamp DESC LIMIT 10",
-          "rawQuery": true, "format": "table",
-          "refId": "A"
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "EdgeDB"
+          },
+          "queryText": "SELECT timestamp, model_name, ROUND(metric_value, 4) as metric_value, ROUND(z_score, 3) as z_score, is_anomaly FROM monitor_events WHERE node_id = '$node_id' ORDER BY timestamp DESC LIMIT 10",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A",
+          "rawQueryText": "SELECT timestamp, model_name, ROUND(metric_value, 4) as metric_value, ROUND(z_score, 3) as z_score, is_anomaly FROM monitor_events WHERE node_id = '$node_id' ORDER BY timestamp DESC LIMIT 10"
         }
       ]
     }

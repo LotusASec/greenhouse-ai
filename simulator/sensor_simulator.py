@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os
+import random
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -69,13 +70,21 @@ class SensorSimulator:
         self._conn: Optional[sqlite3.Connection] = None
         if self._db_path:
             self._init_db()
+        else:
+            log.warning(
+                "DB_PATH not set — sensor readings will NOT be persisted to "
+                "SQLite (downstream dashboards and sync will see no data). "
+                "Set DB_PATH or pass db_path to enable persistence."
+            )
 
+        # One-shot spike flag for "spike" anomaly injection
+        self._spike_next: bool = False
         # Freeze state for "freeze" anomaly injection
         self._frozen_values: Optional[dict] = None
         # Drift offset for "drift" anomaly injection
         self._drift_offsets: dict = {k: 0.0 for k in self._sensor_profile}
 
-        self._rng = __import__("random").Random()
+        self._rng = random.Random()
         log.info("SensorSimulator initialized — node: %s, profile: %s", self.node_id, self.profile)
 
     # ------------------------------------------------------------------
@@ -149,8 +158,7 @@ class SensorSimulator:
                     mean = hi * solar           # light follows solar curve
 
                 # Gaussian noise
-                import random as _r
-                value = _r.gauss(mean, std)
+                value = self._rng.gauss(mean, std)
 
                 # Drift offset (accumulates over time)
                 value += self._drift_offsets[sensor]
@@ -158,6 +166,16 @@ class SensorSimulator:
                 # Clamp to config bounds
                 value = max(lo, min(hi, value))
                 sensors[sensor] = round(value, 4)
+
+        # One-shot spike anomaly: extreme outlier beyond config bounds
+        # (intentionally NOT clamped — the anomaly model must see it as extreme)
+        if self._spike_next:
+            self._spike_next = False
+            for sensor, params in self._sensor_profile.items():
+                lo = float(params["min"])
+                hi = float(params["max"])
+                sensors[sensor] = round(hi + 0.5 * (hi - lo), 4)
+            log.warning("Anomaly: spike applied to this reading")
 
         reading = {
             "node_id":   self.node_id,
@@ -200,6 +218,7 @@ class SensorSimulator:
             log.error("Unknown anomaly profile: %s", profile)
 
     def reset_anomaly(self) -> None:
+        self._spike_next = False
         self._frozen_values = None
         self._drift_offsets = {k: 0.0 for k in self._sensor_profile}
         log.info("Anomaly injection reset")
@@ -214,17 +233,14 @@ class SensorSimulator:
 
         # Check if anomaly injection is configured to be auto-enabled
         if self._anomaly_cfg.get("enabled") and self._anomaly_cfg.get("probability", 0) > 0:
-            import random as _r
             anomaly_prob = float(self._anomaly_cfg["probability"])
         else:
             anomaly_prob = 0.0
 
         while True:
             try:
-                if anomaly_prob > 0.0:
-                    import random as _r
-                    if _r.random() < anomaly_prob:
-                        self.inject_anomaly("spike")
+                if anomaly_prob > 0.0 and self._rng.random() < anomaly_prob:
+                    self.inject_anomaly("spike")
 
                 reading = self.generate_reading()
                 s = reading["sensors"]

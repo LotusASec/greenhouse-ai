@@ -11,6 +11,8 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
+import httpx
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -127,7 +129,6 @@ async def status():
 @app.get("/threshold")
 async def get_threshold():
     """Proxy to Fusion Engine GET /rules."""
-    import httpx
     fusion_url = os.getenv("FUSION_SERVICE_URL", "http://edge1_fusion:8106")
     try:
         async with httpx.AsyncClient() as client:
@@ -141,7 +142,6 @@ async def get_threshold():
 @app.put("/threshold/{rule_id}")
 async def update_threshold(rule_id: str, body: ThresholdUpdate):
     """Proxy to Fusion Engine PUT /rules/{rule_id}/threshold."""
-    import httpx
     fusion_url = os.getenv("FUSION_SERVICE_URL", "http://edge1_fusion:8106")
     try:
         async with httpx.AsyncClient() as client:
@@ -166,6 +166,16 @@ async def get_logs(
     return {"items": pipeline.get_logs(limit=limit, offset=offset)}
 
 
+@app.get("/sensors/readings")
+async def get_sensor_readings(
+    since: Optional[str] = Query(default=None),
+    limit: int = Query(default=5000, ge=1, le=10000),
+):
+    """Incremental sensor readings since a timestamp — pulled by central aggregator."""
+    pipeline: EdgePipeline = app.state.pipeline
+    return {"readings": pipeline.get_readings_since(since=since, limit=limit)}
+
+
 @app.get("/alerts")
 async def get_alerts(
     level:  Optional[str] = Query(default=None),
@@ -175,7 +185,6 @@ async def get_alerts(
     offset: int = Query(default=0, ge=0),
 ):
     """Proxy to Alarm Engine GET /alerts."""
-    import httpx
     alarm_url = os.getenv("ALARM_SERVICE_URL", "http://edge1_alarm:8107")
     params = {"limit": limit, "offset": offset}
     if level:  params["level"]  = level
@@ -193,11 +202,12 @@ async def get_alerts(
 @app.get("/sync")
 async def sync():
     """Return unsynced alarms — used by central layer in Phase 6."""
-    import httpx
     alarm_url = os.getenv("ALARM_SERVICE_URL", "http://edge1_alarm:8107")
     try:
         async with httpx.AsyncClient() as client:
-            r = await client.get(f"{alarm_url}/alerts/unsynced", timeout=5.0)
+            # Generous timeout: after a long disconnection the unsynced
+            # backlog can be very large (no limit on this endpoint).
+            r = await client.get(f"{alarm_url}/alerts/unsynced", timeout=60.0)
             r.raise_for_status()
             data = r.json()
             return data.get("alarms", [])
@@ -214,13 +224,12 @@ async def alerts_unsynced():
 @app.post("/alerts/sync-all")
 async def alerts_sync_all(node_id: Optional[str] = Query(default=None)):
     """Mark all alarms as synced — called by central after pulling."""
-    import httpx
     alarm_url = os.getenv("ALARM_SERVICE_URL", "http://edge1_alarm:8107")
     params = {"node_id": node_id} if node_id else {}
     try:
         async with httpx.AsyncClient() as client:
             r = await client.post(f"{alarm_url}/alerts/sync-all",
-                                  params=params, timeout=5.0)
+                                  params=params, timeout=30.0)
             r.raise_for_status()
             return r.json()
     except Exception as exc:

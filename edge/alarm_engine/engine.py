@@ -101,6 +101,12 @@ class AlarmEngine:
     def process(self, alarm: dict) -> dict:
         """Store alarm unless suppressed by cooldown.
 
+        NOTE — intentional dual-write: FusionEngine also persists the same
+        alarm to this table at evaluation time (INT-08); this write (INT-10)
+        is deduplicated by the alarm_id PRIMARY KEY + INSERT OR IGNORE.
+        AlarmEngine owns cooldown/suppression; FusionEngine's write is a
+        persistence safety net. Keep both — see INT-08/INT-10 docs.
+
         Returns:
             {"stored": bool, "suppressed": bool, "alarm": alarm_dict}
         """

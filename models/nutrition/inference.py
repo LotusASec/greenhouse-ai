@@ -38,7 +38,20 @@ class NutritionInference:
         if not model_path.exists():
             raise FileNotFoundError(f"Model not found: {model_path}. Run train.py first.")
 
-        self._clf = joblib.load(model_path)
+        # New artifacts are {"model": clf, "class_mapping": {...}}; legacy
+        # artifacts are a bare classifier — then the mapping comes from config.
+        artifact = joblib.load(model_path)
+        if isinstance(artifact, dict):
+            self._clf = artifact["model"]
+            self._class_mapping = {
+                int(k): str(v) for k, v in artifact["class_mapping"].items()
+            }
+        else:
+            self._clf = artifact
+            self._class_mapping = {
+                int(k): str(v) for k, v in col_map["class_mapping"].items()
+            }
+
         self.model_name = "rf_nutrition"
         self._loaded = True
 
@@ -61,17 +74,11 @@ class NutritionInference:
         class_idx = list(self._clf.classes_).index(raw_pred)
         confidence = float(proba[class_idx])
 
-        # 3. Sayısal sınıfı MASTER_SPEC §3.4 şemasına uygun string etiketine çevir
-        class_mapping = {
-            0: "N_deficiency",
-            1: "P_deficiency",
-            2: "K_deficiency",
-            3: "normal"
-        }
-        
-        # Eğer modelden gelen değer int veya string sayı ise maple, yoksa olduğu gibi bırak
+        # 3. Sayısal sınıfı MASTER_SPEC §3.4 şemasına uygun string etiketine çevir.
+        #    Eşleme model artifact'ından (veya legacy modelde config'den) gelir —
+        #    burada hardcode edilmez.
         try:
-            deficiency_class = class_mapping[int(raw_pred)]
+            deficiency_class = self._class_mapping[int(raw_pred)]
         except (ValueError, KeyError):
             deficiency_class = str(raw_pred)
 
@@ -90,5 +97,3 @@ class NutritionInference:
             "fertilizer_recommendation": recommendation,
             "inference_time_ms": t_ms
         }
-
-        

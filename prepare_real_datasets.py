@@ -1,14 +1,21 @@
+import os
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
-SOURCE_FILE = "plant_health_data (1).csv"
+SOURCE_FILE = os.getenv("SOURCE_FILE", "plant_health_data.csv")
 TARGET_DIR = Path("models/shared/data")
 TARGET_DIR.mkdir(parents=True, exist_ok=True)
 
 print("⏳ Tüm veri setleri çift sütun güvencesiyle senkronize ediliyor...")
 
 # 1. Gerçek ham veriyi yükle
+if not Path(SOURCE_FILE).exists():
+    raise SystemExit(
+        f"Kaynak CSV bulunamadı: {SOURCE_FILE!r} — SOURCE_FILE ortam değişkeni "
+        "ile ham veri setinin yolunu belirtin."
+    )
 df_raw = pd.read_csv(SOURCE_FILE)
 
 # 2. Girdi özelliklerini projenin frozen şablonuna dönüştür

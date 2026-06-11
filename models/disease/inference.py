@@ -78,16 +78,11 @@ class DiseaseInference:
             probs  = F.softmax(logits, dim=1).squeeze().tolist()
         inference_ms = (time.perf_counter() - t_start) * 1000.0
 
-        # --- ETİKET KAYMASINI DÜZELTEN GERÇEK SIRALAMA ---
-        # ResNet modelinin çıktı nöron sırasına göre arayüz etiketlerini eşliyoruz.
-        true_order = ["late_blight", "early_blight", "healthy", "leaf_mold", "other"]
-
-        if len(probs) == len(true_order):
-            class_probs = {true_order[i]: round(float(probs[i]), 4) for i in range(len(true_order))}
-        else:
-            # Güvence: Eğer sınıf sayıları bir sebeple uyuşmazsa yedek plana dön
-            class_probs = {cls: round(float(p), 4) for cls, p in zip(self.class_names, probs)}
-        # ------------------------------------------------
+        # Label order comes from the checkpoint (TR-15) — the single source of
+        # truth for output-neuron → class-name mapping. Never hardcode it here.
+        class_probs = {
+            cls: round(float(p), 4) for cls, p in zip(self.class_names, probs)
+        }
 
         top_prediction  = max(class_probs, key=class_probs.get)
         top_confidence  = class_probs[top_prediction]

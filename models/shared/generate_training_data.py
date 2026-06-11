@@ -1,8 +1,10 @@
+import os
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
-SOURCE_FILE = "plant_health_data (1).csv"
+SOURCE_FILE = os.getenv("SOURCE_FILE", "plant_health_data.csv")
 TARGET_DIR = Path("models/shared/data")
 TARGET_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -46,6 +48,11 @@ frames.append(f5)
 pd.concat(frames, ignore_index=True).to_csv(TARGET_DIR / "anomaly_test_inject.csv", index=False)
 
 # --- B. SULAMA VE BESİN İÇİN GERÇEK VERİLERİN İŞLENMESİ ---
+if not Path(SOURCE_FILE).exists():
+    raise SystemExit(
+        f"Kaynak CSV bulunamadı: {SOURCE_FILE!r} — SOURCE_FILE ortam değişkeni "
+        "ile ham veri setinin yolunu belirtin."
+    )
 df_raw = pd.read_csv(SOURCE_FILE)
 df_mapped = pd.DataFrame()
 df_mapped['temperature'] = df_raw['Ambient_Temperature']
@@ -58,7 +65,7 @@ df_mapped['ph'] = df_raw['Soil_pH']
 # Sulama Setleri (Gerçek Veri)
 df_irr = df_mapped.copy()
 df_irr['irrigate'] = ((df_raw['Soil_Moisture'] < 25.0) | ((df_raw['Plant_Health_Status'] == 'High Stress') & (df_raw['Soil_Moisture'] < 35.0))).astype(int)
-df_irr['recommended_amount_liters'] = np.where(df_irr['irrigate'] == 1, np.round((45 - df_irr['soil_moisture']) * 0.7 + (df_irr['temperature'] * 0.15), 2), 0.0)
+df_irr['amount_liters'] = np.where(df_irr['irrigate'] == 1, np.round((45 - df_irr['soil_moisture']) * 0.7 + (df_irr['temperature'] * 0.15), 2), 0.0)
 df_irr.sample(frac=0.8, random_state=44).to_csv(TARGET_DIR / "irrigation_train.csv", index=False)
 df_irr.sample(frac=0.2, random_state=44).to_csv(TARGET_DIR / "irrigation_test.csv", index=False)
 

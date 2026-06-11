@@ -35,8 +35,9 @@ log = logging.getLogger(SERVICE_NAME)
 # SQLite helpers
 # ---------------------------------------------------------------------------
 
-def _init_db(path: str) -> None:
-    conn = sqlite3.connect(path)
+def _init_db(path: str) -> sqlite3.Connection:
+    """Open the persistent service connection and ensure schema exists."""
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS monitor_events (
           id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,11 +53,10 @@ def _init_db(path: str) -> None:
         )
     """)
     conn.commit()
-    conn.close()
+    return conn
 
 
-def _write_event(path: str, event: dict) -> None:
-    conn = sqlite3.connect(path)
+def _write_event(conn: sqlite3.Connection, event: dict) -> None:
     conn.execute(
         """INSERT INTO monitor_events
            (node_id, timestamp, model_name, metric_value,
@@ -74,7 +74,6 @@ def _write_event(path: str, event: dict) -> None:
         ),
     )
     conn.commit()
-    conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -85,13 +84,16 @@ def _write_event(path: str, event: dict) -> None:
 async def lifespan(app: FastAPI):
     log.info("Starting %s on port %d", SERVICE_NAME, SERVICE_PORT)
     app.state.monitor = MonitorService()
+    app.state.db = None
     if DB_PATH:
         try:
-            _init_db(DB_PATH)
+            app.state.db = _init_db(DB_PATH)
             log.info("SQLite initialised at %s", DB_PATH)
         except Exception as exc:
             log.warning("DB init failed (continuing without persistence): %s", exc)
     yield
+    if app.state.db is not None:
+        app.state.db.close()
     log.info("%s shutting down", SERVICE_NAME)
 
 
@@ -155,9 +157,9 @@ async def monitor_model(
         timestamp=payload.timestamp,
     )
 
-    if DB_PATH:
+    if app.state.db is not None:
         try:
-            _write_event(DB_PATH, event)
+            _write_event(app.state.db, event)
         except Exception as exc:
             log.warning("DB write failed: %s", exc)
 

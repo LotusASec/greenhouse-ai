@@ -587,7 +587,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CENTRAL_DB_PATH: /data/central.db
       NODE1_GATEWAY_URL: http://edge1_gateway:8100
-      NODE2_GATEWAY_URL: http://edge2_gateway:8200
+      NODE2_GATEWAY_URL: http://edge2_gateway:8100
       CENTRAL_SYNC_INTERVAL: ${CENTRAL_SYNC_INTERVAL:-30}
       AGGREGATOR_SERVICE_URL: http://central_aggregator:9001
       LSTM_SERVICE_URL: http://central_lstm:9002
@@ -618,7 +618,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CENTRAL_DB_PATH: /data/central.db
       NODE1_GATEWAY_URL: http://edge1_gateway:8100
-      NODE2_GATEWAY_URL: http://edge2_gateway:8200
+      NODE2_GATEWAY_URL: http://edge2_gateway:8100
       CENTRAL_SYNC_INTERVAL: ${CENTRAL_SYNC_INTERVAL:-30}
     ports:
       - "9001:9001"
