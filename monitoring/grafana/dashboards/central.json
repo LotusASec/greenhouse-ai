@@ -253,11 +253,14 @@
             "type": "frser-sqlite-datasource",
             "uid": "CentralDB"
           },
-          "queryText": "SELECT CAST(strftime('%s', timestamp) / 3600 AS INTEGER) * 3600000 as time, node_id, COUNT(*) as alarm_count FROM alarms WHERE timestamp >= datetime('now', '-7 days') GROUP BY CAST(strftime('%s', timestamp) / 3600 AS INTEGER), node_id ORDER BY time ASC",
+          "queryText": "SELECT CAST(strftime('%s', timestamp) / 3600 AS INTEGER) * 3600 as time, node_id, COUNT(*) as alarm_count FROM alarms WHERE timestamp >= datetime('now', '-7 days') GROUP BY CAST(strftime('%s', timestamp) / 3600 AS INTEGER), node_id ORDER BY time ASC",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A",
-          "rawQueryText": "SELECT CAST(strftime('%s', timestamp) / 3600 AS INTEGER) * 3600000 as time, node_id, COUNT(*) as alarm_count FROM alarms WHERE timestamp >= datetime('now', '-7 days') GROUP BY CAST(strftime('%s', timestamp) / 3600 AS INTEGER), node_id ORDER BY time ASC"
+          "rawQueryText": "SELECT CAST(strftime('%s', timestamp) / 3600 AS INTEGER) * 3600 as time, node_id, COUNT(*) as alarm_count FROM alarms WHERE timestamp >= datetime('now', '-7 days') GROUP BY CAST(strftime('%s', timestamp) / 3600 AS INTEGER), node_id ORDER BY time ASC",
+          "timeColumns": [
+            "time"
+          ]
         }
       ]
     },

@@ -322,11 +322,14 @@
             "type": "frser-sqlite-datasource",
             "uid": "EdgeDB"
           },
-          "queryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60000 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = '$node_id' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC",
+          "queryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = '$node_id' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A",
-          "rawQueryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60000 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = '$node_id' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC"
+          "rawQueryText": "SELECT CAST(strftime('%s', timestamp) / 60 AS INTEGER) * 60 as time, AVG(temperature) as temperature, AVG(humidity) as humidity, AVG(soil_moisture) as soil_moisture FROM sensor_readings WHERE node_id = '$node_id' AND timestamp >= datetime('now', '-24 hours') GROUP BY CAST(strftime('%s', timestamp) / 60 AS INTEGER) ORDER BY time ASC",
+          "timeColumns": [
+            "time"
+          ]
         }
       ]
     },
